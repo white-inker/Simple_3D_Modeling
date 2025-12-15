@@ -1,0 +1,27 @@
+{
+  "name" : "simple3dmodeling",
+  "version-string" : "1.0.0",
+  "builtin-baseline" : "9824d05f8d9548720ba3331f4baba3e2d6c1693b",
+  "dependencies" : [ {
+    "name" : "glog",
+    "version>=" : "0.7.1"
+  }, {
+    "name" : "nlohmann-json",
+    "version>=" : "3.12.0#1"
+  }, {
+    "name" : "glad",
+    "version>=" : "0.1.36"
+  }, {
+    "name" : "gtest",
+    "version>=" : "1.17.0#1"
+  }, {
+    "name" : "glm",
+    "version>=" : "1.0.1#3"
+  }, {
+    "name" : "glfw3",
+    "version>=" : "3.4#1"
+  }, {
+    "name" : "imgui",
+    "version>=" : "1.91.9"
+  } ]
+}
