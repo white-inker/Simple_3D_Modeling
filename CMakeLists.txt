@@ -29,6 +29,7 @@ target_link_libraries(${PROJECT_NAME}
         glm::glm
         imgui::imgui
         glog::glog
+        nlohmann_json::nlohmann_json
 )
 
 if (WIN32)

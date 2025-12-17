@@ -1,16 +1,9 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+#include <utils/glogWrapper.h>
 
-int main() {
-    glfwInit();
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Test", nullptr, nullptr);
-    glfwMakeContextCurrent(window);
-    gladLoadGL();
+int main()
+{
+    GlogWrapper::Init("Simple_3D_Modeling");
+    LOG(INFO) << "Program Start";
 
-    while (!glfwWindowShouldClose(window)) {
-        glClear(GL_COLOR_BUFFER_BIT);
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-    glfwTerminate();
+    GlogWrapper::Shutdown();
 }
