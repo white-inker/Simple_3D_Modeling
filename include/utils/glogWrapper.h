@@ -12,7 +12,6 @@ class GlogWrapper
 public:
     // 初始化日志系统
     static void Init(const std::string& programName,
-                     const std::string& logDir = "./logs",
                      bool logToConsole = true,
                      int minLogLevel = 0); // 0=INFO, 1=WARNING, 2=ERROR
 
@@ -21,9 +20,10 @@ public:
 
     static bool IsInitialized();
 
-private:
-    GlogWrapper() = delete;
-    ~GlogWrapper() = delete;
+    explicit GlogWrapper(const std::string& programName,
+                     bool logToConsole = true,
+                     int minLogLevel = 0);
+    ~GlogWrapper();
 
 private:
     static bool s_initialized;

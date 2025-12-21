@@ -6,53 +6,61 @@
 #define APPLICATION_H
 
 #include <string>
-#include <core/window.h>
+#include <filesystem>
 #include <utils/common.h>
-#include <interaction/inputContext.h>
-#include <glm/glm.hpp>
+#include <utils/appConfig.h>
 #include <unordered_map>
+#include <assets/assetManager.h>
 
-struct WindowConfig
-{
-    std::string windowTitle;
-    int windowWidth = 800;
-    int windowHeight = 600;
-    bool windowResizable = false;
-    bool vSync = false;
-    bool msaa = false;
-};
-
-class AppConfig
-{
-public:
-    std::string assetRootDir;
-    std::unordered_map<std::string, WindowConfig> windows;
-    std::pair<int, int> glVersion;
-    glm::vec4 backgroundColor{1.0f, 1.0f, 1.0f, 1.0f};
-    static AppConfig& instance();
-private:
-    AppConfig() = default;
-    void init(const std::string& configPath);
-    static bool isInitialized;
-};
+class Scene;
+class Renderer;
+class Window;
 
 class Application
 {
 public:
-    Application();
+    explicit Application(std::string name);
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
     virtual ~Application();
+
     void run();
-private:
     void init();
+
+protected:
+    virtual void onUpdate(float dt) {}
+    virtual void onRenderWindow(const std::string& name, Window& window, float dt) {}
+    virtual void render();
+    //virtual void initAssets() {};
+    virtual void initWindowCamera(const WindowConfig& config, Window& window);
+    virtual void initLightFromConfig();
+    virtual void initSceneEntity() {};
+    virtual void initWindowInput(const WindowConfig& config, Window& win);
+
+private:
     void createWindows();
-    bool isRunning();
+    static void initWindowFPSCamera(const WindowConfig& config, Window& window);
+    static void initWindowOrbitCamera(const WindowConfig& config, Window& window);
+    [[nodiscard]] bool isRunning() const;
+
     void updateTime();
-    virtual void renderFrame();
+
     static void errorCallback(int error, const char* description);
 
+protected:
+    [[nodiscard]] std::filesystem::path getExecutableDir() const;
+
     std::unordered_map<std::string, std::unique_ptr<Window>> windows;
+
+    std::unique_ptr<AssetManager> assetManager;
+    std::unique_ptr<Scene> scene;
+    std::unique_ptr<Renderer> renderer;
+
+    // timing
+    float timeNow = 0.0f;
+    float timeLast = 0.0f;
+    float deltaTime = 0.0f;
+    std::string exeName;
 };
 
 #endif //APPLICATION_H

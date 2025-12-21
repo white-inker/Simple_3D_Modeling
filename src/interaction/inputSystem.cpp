@@ -4,8 +4,9 @@
 
 #include "interaction/InputSystem.h"
 #include "interaction/InputContext.h"
+#include "utils/windowContext.h"
 
-void InputSystem::Attach(GLFWwindow *window, InputContext *context)
+void InputSystem::Attach(GLFWwindow *window, WindowContext *context)
 {
     glfwSetWindowUserPointer(window, context);
 
@@ -20,29 +21,29 @@ void InputSystem::Attach(GLFWwindow *window, InputContext *context)
 
 void InputSystem::KeyCallback(GLFWwindow *window, int key, int, int action, int)
 {
-    auto *ctx = static_cast<InputContext *>(
+    const auto ctx = static_cast<WindowContext *>(
         glfwGetWindowUserPointer(window)
     );
     if (ctx)
-        ctx->OnKey(key, action);
+        ctx->input->OnKey(key, action);
 }
 
 void InputSystem::MouseButtonCallback(GLFWwindow *window, int button, int action, int)
 {
-    auto *ctx = static_cast<InputContext *>(
+    const auto ctx = static_cast<WindowContext *>(
         glfwGetWindowUserPointer(window)
     );
     if (ctx)
-        ctx->OnMouseButton(button, action);
+        ctx->input->OnMouseButton(button, action);
 }
 
 void InputSystem::CursorPosCallback(GLFWwindow *window, double xpos, double ypos)
 {
-    auto *ctx = static_cast<InputContext *>(
+    const auto ctx = static_cast<WindowContext *>(
         glfwGetWindowUserPointer(window)
     );
     if (ctx)
-        ctx->OnMouseMove(
+        ctx->input->OnMouseMove(
             static_cast<float>(xpos),
             static_cast<float>(ypos)
         );
@@ -50,11 +51,11 @@ void InputSystem::CursorPosCallback(GLFWwindow *window, double xpos, double ypos
 
 void InputSystem::ScrollCallback(GLFWwindow *window, double, double yoffset)
 {
-    auto *ctx = static_cast<InputContext *>(
+    const auto ctx = static_cast<WindowContext *>(
         glfwGetWindowUserPointer(window)
     );
     if (ctx)
-        ctx->OnScroll(static_cast<float>(yoffset));
+        ctx->input->OnScroll(static_cast<float>(yoffset));
 }
 
 void InputSystem::framebufferResizeCallback(GLFWwindow *window, int width, int height)
@@ -62,4 +63,11 @@ void InputSystem::framebufferResizeCallback(GLFWwindow *window, int width, int h
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
+
+    const auto ctx = static_cast<WindowContext *>(glfwGetWindowUserPointer(window));
+    if (ctx && height > 0)
+    {
+        ctx->cameraController->getCamera().setAspect(width, height);
+    }
+
 }

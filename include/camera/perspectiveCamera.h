@@ -6,14 +6,15 @@
 #define PERSPECTIVECAMERA_H
 
 #include <glm/glm.hpp>
+#include <camera/camera.h>
 
-class PerspectiveCamera
+class PerspectiveCamera : public Camera
 {
 public:
-    virtual ~PerspectiveCamera() = default;
+    ~PerspectiveCamera() override = default;
 
     // viewport -> 影响 aspect
-    void setViewportSize(int framebufferWidth, int framebufferHeight);
+    void setAspect(int framebufferWidth, int framebufferHeight) override;
 
     // 透视参数
     void setPerspective(float fovYDegrees, float zNear, float zFar);
@@ -23,9 +24,9 @@ public:
     float getNear() const { return m_near; }
     float getFar() const { return m_far; }
 
-    virtual const glm::mat4& getViewMatrix() const = 0;
+    const glm::mat4& getViewMatrix() const override = 0;
 
-    const glm::mat4& getProjectionMatrix() const;
+    const glm::mat4& getProjectionMatrix() const override;
 
 protected:
     void markProjDirty() const { m_projDirty = true; }

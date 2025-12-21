@@ -2,7 +2,7 @@
 // Created by Omari on 25-12-17.
 //
 
-#include <camera/OrbitCamera.h>
+#include <camera/orbitCamera.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 
@@ -46,7 +46,7 @@ glm::vec3 OrbitCamera::getForward() const
     return glm::normalize(forward);
 }
 
-glm::vec3 OrbitCamera::getPosition() const
+const glm::vec3 OrbitCamera::getPosition() const
 {
     // position = target - forward * distance
     return m_target - getForward() * m_distance;
@@ -67,7 +67,7 @@ void OrbitCamera::pan(float deltaX, float deltaY)
     const glm::vec3 right = glm::normalize(glm::cross(fwd, worldUp));
     const glm::vec3 up = glm::normalize(glm::cross(right, fwd));
 
-    // 常见：拖动鼠标向右 -> 场景向右（target向左），这里按你习惯可调符号
+    // 拖动鼠标向右 -> 场景向右（target向左），这里按你习惯可调符号
     m_target += (-right * deltaX) + (up * deltaY);
     m_viewDirty = true;
 }

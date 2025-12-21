@@ -2,7 +2,7 @@
 // Created by Omari on 25-12-17.
 //
 
-#include "camera/FpsCamera.h"
+#include <camera/fpsCamera.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 
@@ -40,7 +40,7 @@ glm::vec3 FpsCamera::getForward() const
 
 glm::vec3 FpsCamera::getRight() const
 {
-    const glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
+    constexpr glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
     return glm::normalize(glm::cross(getForward(), worldUp));
 }
 

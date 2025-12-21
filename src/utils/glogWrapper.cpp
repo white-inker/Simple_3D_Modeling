@@ -7,8 +7,19 @@
 
 bool GlogWrapper::s_initialized = false;
 
-void GlogWrapper::Init(const std::string &programName,
-                       const std::string &logDir,
+GlogWrapper::GlogWrapper(const std::string& programName,
+                     bool logToConsole ,
+                     int minLogLevel)
+{
+    Init(programName, logToConsole, minLogLevel);
+}
+
+GlogWrapper::~GlogWrapper()
+{
+    Shutdown();
+}
+
+void GlogWrapper::Init(const std::string& programName,
                        bool logToConsole,
                        int minLogLevel)
 {
@@ -17,6 +28,11 @@ void GlogWrapper::Init(const std::string &programName,
         return;
     }
 
+    std::filesystem::path exeDir =
+    std::filesystem::absolute(programName).parent_path();
+
+    std::filesystem::path logDir = exeDir / "logs";
+
     // 创建日志目录（如果不存在）
     try
     {
@@ -24,10 +40,9 @@ void GlogWrapper::Init(const std::string &programName,
     }
     catch (...) { }
 
-    google::InitGoogleLogging(programName.c_str());
-
     // 日志输出目录
-    FLAGS_log_dir = logDir;
+    FLAGS_log_dir = "./logs";
+    google::InitGoogleLogging(programName.c_str());
 
     // 同时输出到控制台
     FLAGS_alsologtostderr = logToConsole;
@@ -40,6 +55,8 @@ void GlogWrapper::Init(const std::string &programName,
 
     // 每个日志文件最大大小（MB）
     FLAGS_max_log_size = 10;
+
+    google::InstallFailureSignalHandler();
 
     s_initialized = true;
 }

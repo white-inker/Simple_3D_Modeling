@@ -7,12 +7,12 @@
 
 #include <utils/common.h>
 
-class InputContext;
+class WindowContext;
 
 class InputSystem
 {
 public:
-    static void Attach(GLFWwindow* window, InputContext* context);
+    static void Attach(GLFWwindow* window, WindowContext* context);
 
 private:
     static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);

@@ -5,7 +5,7 @@
 #ifndef FPSCAMERA_H
 #define FPSCAMERA_H
 
-#include <camera/PerspectiveCamera.h>
+#include <camera/perspectiveCamera.h>
 #include <glm/glm.hpp>
 
 class FpsCamera final : public PerspectiveCamera
@@ -16,7 +16,7 @@ public:
     void setPosition(const glm::vec3& p);
     void setYawPitch(float yawDeg, float pitchDeg);
 
-    const glm::vec3& getPosition() const { return m_position; }
+    const glm::vec3 getPosition() const override { return m_position; }
     float getYawDeg() const { return m_yawDeg; }
     float getPitchDeg() const { return m_pitchDeg; }
 

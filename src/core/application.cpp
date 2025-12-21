@@ -1,58 +1,30 @@
-//
-// Created by Omari on 25-12-17.
-//
-
-#include <nlohmann/json.hpp>
-#include <fstream>
 #include <core/application.h>
-#include <utils/common.h>
+
+#include <stdexcept>
+#include <utility>
+#include <vector>
+#include <algorithm>
+
+#include <glad/glad.h>
+
+#include <utils/appConfig.h>
+#include <core/window.h>
+#include <graphics/renderer.h>
+#include <scene/scene.h>
+
 #include <utils/glogWrapper.h>
+#include <scene/directionalLight.h>
+#include <scene/pointLight.h>
 
-bool AppConfig::isInitialized = false;
-
-AppConfig &AppConfig::instance()
+Application::Application(std::string name) : exeName(std::move(name))
 {
-    static AppConfig instance;
-    if (!isInitialized)
-    {
-        instance.init(appConfigPath);
-        isInitialized = true;
-    }
-    return instance;
-}
-
-void AppConfig::init(const std::string& configPath)
-{
-    using json = nlohmann::json;
-    std::ifstream configFile(configPath);
-    if (!configFile.is_open()) throw std::runtime_error("Server config file not found");
-    json config;
-    configFile >> config;
-    assetRootDir = config["assetRootDir"].get<std::string>();
-    // windows
-    windows["mainWindow"].windowTitle = config["mainWindow"]["windowTitle"].get<std::string>();
-    windows["mainWindow"].windowWidth = config["mainWindow"]["windowWidth"].get<int>();
-    windows["mainWindow"].windowHeight = config["mainWindow"]["windowHeight"].get<int>();
-    windows["mainWindow"].windowResizable = config["mainWindow"]["windowResizable"].get<bool>();
-    windows["mainWindow"].vSync = config["mainWindow"]["vSync"].get<bool>();
-    windows["mainWindow"].msaa = config["mainWindow"]["msaa"].get<bool>();
-
-    glVersion.first = config["glVersion"]["major"].get<int>();
-    glVersion.second = config["glVersion"]["minor"].get<int>();
-
-    backgroundColor.x = config["backgroundColor"].at(0).get<float>();
-    backgroundColor.y = config["backgroundColor"].at(1).get<float>();
-    backgroundColor.z = config["backgroundColor"].at(2).get<float>();
-    backgroundColor.w = config["backgroundColor"].at(3).get<float>();
-}
-
-Application::Application()
-{
-    init();
 }
 
 Application::~Application()
 {
+    renderer.reset();
+    scene.reset();
+    windows.clear();
     glfwTerminate();
 }
 
@@ -60,17 +32,13 @@ void Application::init()
 {
     glfwSetErrorCallback(errorCallback);
 
-    // init glfw
     if (glfwInit() != GLFW_TRUE)
-    {
-        throw std::runtime_error("init glfw failure");
-    }
+        throw std::runtime_error("glfwInit failed");
 
-    // create glfw window
+    // OpenGL 全局 hints
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, AppConfig::instance().glVersion.first);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, AppConfig::instance().glVersion.second);
-
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
@@ -79,97 +47,222 @@ void Application::init()
 
     createWindows();
 
-    LOG(INFO) << "OpenGL";
-    LOG(INFO) << "+ version:    " << glGetString(GL_VERSION);
-    LOG(INFO) << "+ renderer:   " << glGetString(GL_RENDERER);
-    LOG(INFO) << "+ glsl:       " << glGetString(GL_SHADING_LANGUAGE_VERSION);
+    auto assetPath = getExecutableDir() / AppConfig::instance().assetRootDir;
+
+    renderer = std::make_unique<Renderer>();
+    scene = std::make_unique<Scene>();
+    assetManager = std::make_unique<AssetManager>(assetPath.string());
+    //initAssets();
+    initLightFromConfig();
+    initSceneEntity();
+
+    // 初始时间
+    timeLast = static_cast<float>(glfwGetTime());
 }
 
 void Application::createWindows()
 {
-    bool isGladLoaded = false;
-    for (auto &[windowName, windowConfig] : AppConfig::instance().windows)
+    // 为了让多窗口资源可共享：后续窗口 share 第一个窗口的 context
+    GLFWwindow* sharedContext = nullptr;
+
+    std::vector<std::string> names;
+    names.reserve(AppConfig::instance().windows.size());
+    for (auto& [name, _] : AppConfig::instance().windows) names.push_back(name);
+
+    auto itMain = std::find(names.begin(), names.end(), "mainWindow");
+    if (itMain != names.end())
+        std::rotate(names.begin(), itMain, itMain + 1);
+    else
+        std::sort(names.begin(), names.end());
+
+    bool gladLoaded = false;
+
+    for (const auto& name : names)
     {
-        int w, h;
-        glfwWindowHint(GLFW_RESIZABLE, windowConfig.windowResizable);
-        if (windowConfig.msaa)
-        {
-            glfwWindowHint(GLFW_SAMPLES, 4);
-        }
+        const auto& wc = AppConfig::instance().windows.at(name);
 
-        auto window = glfwCreateWindow(windowConfig.windowWidth, windowConfig.windowHeight,
-            windowConfig.windowTitle.c_str(), nullptr, nullptr);
+        // 每个窗口的 hint 需要在创建前设置
+        glfwWindowHint(GLFW_RESIZABLE, wc.windowResizable ? GLFW_TRUE : GLFW_FALSE);
 
-        if (window == nullptr)
-        {
-            glfwTerminate();
-            throw std::runtime_error("create glfw window failure");
-        }
+        if (wc.msaa)
+            glfwWindowHint(GLFW_SAMPLES, wc.msaaSamples);
+        else
+            glfwWindowHint(GLFW_SAMPLES, 0);
 
-        auto& [iter , _] = windows.emplace(windowName, std::make_unique<Window>(window));
-        glfwMakeContextCurrent(window);
-        if (!isGladLoaded)
+        GLFWwindow* w = glfwCreateWindow(
+            wc.windowWidth,
+            wc.windowHeight,
+            wc.windowTitle.c_str(),
+            nullptr,
+            sharedContext
+        );
+
+        if (!w)
+            throw std::runtime_error("glfwCreateWindow failed: " + name);
+
+        // 插入 Window 对象
+        auto [iter, ok] = windows.emplace(name, std::make_unique<Window>(w));
+        initWindowCamera(wc, *iter->second);
+        initWindowInput(wc, *iter->second);
+
+        glfwMakeContextCurrent(w);
+
+        // GLAD 只加载一次
+        if (!gladLoaded)
         {
             if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
-            {
-                throw std::runtime_error("glad initialization OpenGL failure");
-            }
+                throw std::runtime_error("gladLoadGLLoader failed");
+
+            gladLoaded = true;
+
+            LOG(INFO) << "OpenGL";
+            LOG(INFO) << "+ version:    " << glGetString(GL_VERSION);
+            LOG(INFO) << "+ renderer:   " << glGetString(GL_RENDERER);
+            LOG(INFO) << "+ glsl:       " << glGetString(GL_SHADING_LANGUAGE_VERSION);
+
+            // 第一个窗口创建完后作为 share 源
+            sharedContext = w;
         }
+
+        // 初始化窗口子系统
         iter->second->init();
 
-        if (windowConfig.vSync)
-            glfwSwapInterval(1);
-        else glfwSwapInterval(0);
-
-        glfwGetFramebufferSize(window, &w, &h);
-        glViewport(0, 0, w, h);
-
-        if (windowConfig.msaa)
-            glEnable(GL_MULTISAMPLE);
+        glfwSwapInterval(wc.vSync ? 1 : 0);
     }
 }
+
+void Application::initLightFromConfig()
+{
+    // Scene 管灯光：从 AppConfig.defaultLighting 初始化
+    auto& Lcfg = AppConfig::instance().defaultLighting;
+    auto& L = scene->getLighting();
+    L.ambient = Lcfg.ambient;
+
+    // directional
+    if (Lcfg.directional.enabled)
+    {
+        auto dir = std::make_unique<DirectionalLight>();
+        dir->direction = Lcfg.directional.direction;
+        dir->color = Lcfg.directional.color;
+        dir->intensity = Lcfg.directional.intensity;
+        L.setDirectional(std::move(dir));
+    }
+
+    // points
+    for (const auto& pc : Lcfg.points)
+    {
+        if (!pc.enabled) continue;
+        auto& p = L.addPointLight();
+        p.position  = pc.position;
+        p.color     = pc.color;
+        p.intensity = pc.intensity;
+        p.range     = pc.range;
+    }
+}
+
+void Application::initWindowCamera(const WindowConfig &config, Window &window)
+{
+    // 默认 FPS 相机
+    initWindowFPSCamera(config, window);
+    // 你可以在下面设置相机参数
+}
+
 
 void Application::run()
 {
     while (isRunning())
     {
         glfwPollEvents();
-        updateTime();
 
-        for (auto &[_, window] : windows)
-        {
-            glfwMakeContextCurrent(window->window);
-            window->handleInput();
-            window->renderFrame();
-            glfwSwapBuffers(window->window);
-        }
+        updateTime();
+        onUpdate(deltaTime);
+
+        render();
     }
 }
 
-bool Application::isRunning()
+void Application::render()
 {
-    for (auto& [_, window] : windows)
-        if (!glfwWindowShouldClose(window->window))
+    for (auto& [name, win] : windows)
+    {
+        GLFWwindow* w = win->window;
+        glfwMakeContextCurrent(w);
+
+        win->handleInput(deltaTime);
+
+        // per-window FrameConfig -> Renderer::FrameParams
+        const auto& wc = AppConfig::instance().windows.at(name);
+
+        Renderer::FrameParams fp;
+        fp.clearColor         = wc.frame.clearColor;
+        fp.clearColorBuffer   = wc.frame.clearColorBuffer;
+        fp.clearDepthBuffer   = wc.frame.clearDepthBuffer;
+        fp.enableDepthTest    = wc.frame.enableDepthTest;
+        fp.enableCullFace     = wc.frame.enableCullFace;
+        fp.enableBlend        = wc.frame.enableBlend;
+        fp.enableMultisample  = (wc.msaa && wc.frame.enableMultisample);
+
+        renderer->beginFrame(w, fp);
+
+        const auto view = win->cameraController->getCamera().getViewMatrix();
+        const auto proj = win->cameraController->getCamera().getProjectionMatrix();
+        const auto viewPos = win->cameraController->getCamera().getPosition();
+
+        renderer->renderScene(*scene, view, proj, viewPos);
+
+        renderer->endFrame();
+
+        onRenderWindow(name, *win, deltaTime);
+
+        glfwSwapBuffers(w);
+    }
+}
+
+bool Application::isRunning() const
+{
+    for (auto& [_, win] : windows)
+        if (!glfwWindowShouldClose(win->window))
             return true;
     return false;
 }
 
-
-void Application::renderFrame()
-{
-    LOG(WARNING) << "Application::renderFrame hasn't been implemented yet";
-}
-
-void Application::errorCallback(int error, const char *description)
-{
-    LOG(ERROR) << description;
-}
-
 void Application::updateTime()
 {
-    LOG(WARNING) << "Application::updateTime hasn't been implemented yet";
+    timeNow = static_cast<float>(glfwGetTime());
+    deltaTime = timeNow - timeLast;
+    timeLast = timeNow;
 }
 
+void Application::errorCallback(int error, const char* description)
+{
+    LOG(ERROR) << "GLFW Error(" << error << "): " << description;
+}
+
+std::filesystem::path Application::getExecutableDir() const
+{
+    return std::filesystem::absolute(exeName).parent_path();
+}
+
+void Application::initWindowFPSCamera(const WindowConfig &config, Window &window)
+{
+    auto camera = FpsCamera();
+    window.initCameraController(camera);
+}
+
+void Application::initWindowOrbitCamera(const WindowConfig &config, Window &window)
+{
+    auto camera = OrbitCamera();
+    window.initCameraController(camera);
+}
+
+void Application::initWindowInput(const WindowConfig& config, Window& win)
+{
+    glfwSetInputMode(win.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    win.input.OnMouseMove(config.windowWidth * 0.5f, config.windowHeight * 0.5f);
+    win.input.Update();
+    const auto pos = win.input.GetMousePosition();
+    glfwSetCursorPos(win.window, pos.x , pos.y);
+}
 
 
 

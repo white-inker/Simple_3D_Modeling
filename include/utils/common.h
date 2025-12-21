@@ -10,6 +10,6 @@
 #include <glm/glm.hpp>
 #include <utils/glogWrapper.h>
 
-constexpr auto appConfigPath = "./config/config.json";
+constexpr auto appConfigPath = "./config/appConfig.json";
 
 #endif //COMMON_H

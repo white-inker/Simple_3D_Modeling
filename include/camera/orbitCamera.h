@@ -5,7 +5,7 @@
 #ifndef ORBITCAMERA_H
 #define ORBITCAMERA_H
 
-#include <camera/PerspectiveCamera.h>
+#include <camera/perspectiveCamera.h>
 #include <glm/glm.hpp>
 
 class OrbitCamera final : public PerspectiveCamera
@@ -22,7 +22,7 @@ public:
     float getYawDeg() const { return m_yawDeg; }
     float getPitchDeg() const { return m_pitchDeg; }
 
-    glm::vec3 getPosition() const; // 根据 target+yaw/pitch+distance推出来
+    const glm::vec3 getPosition() const override; // 根据 target+yaw/pitch+distance推出来
     glm::vec3 getForward() const;  // position -> target 方向
 
     void orbit(float deltaYawDeg, float deltaPitchDeg);

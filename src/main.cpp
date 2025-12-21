@@ -1,9 +1,6 @@
 #include <utils/glogWrapper.h>
 
-int main()
+int main(int argc, char *argv[])
 {
-    GlogWrapper::Init("Simple_3D_Modeling");
-    LOG(INFO) << "Program Start";
 
-    GlogWrapper::Shutdown();
 }

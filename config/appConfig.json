@@ -1,0 +1,66 @@
+{
+  "assetRootDir": "assets",
+
+  "glVersion":
+  {
+    "major": 3,
+    "minor": 3
+  },
+
+  "windows":
+  {
+    "mainWindow":
+    {
+      "windowTitle": "mainWindow",
+      "windowWidth": 1280,
+      "windowHeight": 720,
+      "windowResizable": true,
+      "vSync": true,
+
+      "msaa": true,
+      "msaaSamples": 4,
+
+      "frame":
+      {
+        "clearColor": [0.0, 0.0, 0.0, 1.0],
+        "clearColorBuffer": true,
+        "clearDepthBuffer": true,
+        "enableDepthTest": true,
+        "enableCullFace": false,
+        "enableBlend": false,
+        "enableMultisample": true
+      }
+    }
+  },
+
+  "lighting":
+  {
+    "ambient": [0.1, 0.1, 0.1],
+
+    "directional":
+    {
+      "enabled": true,
+      "direction": [-0.2, -1.0, -0.3],
+      "color": [1.0, 1.0, 1.0],
+      "intensity": 1.0
+    },
+
+    "points":
+    [
+      {
+        "enabled": true,
+        "position": [3.0, 3.0, 3.0],
+        "color": [1.0, 1.0, 1.0],
+        "intensity": 15.0,
+        "range": 15.0
+      },
+      {
+        "enabled": true,
+        "position": [-3.0, 2.0, -2.0],
+        "color": [0.6, 0.7, 1.0],
+        "intensity": 2.0,
+        "range": 10.0
+      }
+    ]
+  }
+}

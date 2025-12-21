@@ -7,12 +7,18 @@
 
 #include <utils/common.h>
 #include <interaction/inputContext.h>
+#include <camera/cameraController.h>
+#include <camera/fpsCamera.h>
+#include <camera/orbitCamera.h>
+#include <utils/windowContext.h>
 
 class Window
 {
 public:
     GLFWwindow* window;
     InputContext input;
+    std::unique_ptr<CameraController> cameraController = nullptr;
+    WindowContext windowContext{};
 
     explicit Window(GLFWwindow* window);
     virtual ~Window();
@@ -21,8 +27,10 @@ public:
     Window(Window&& window) = default;
 
     void init();
-    virtual void handleInput();
-    virtual void renderFrame();
+    void initCameraController(FpsCamera& camera);
+    void initCameraController(OrbitCamera& camera);
+    void handleInput(float dt);
+    void renderFrame();
 };
 
 #endif //WINDOW_H
