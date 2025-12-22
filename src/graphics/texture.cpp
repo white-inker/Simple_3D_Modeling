@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <iostream>
-#define STB_IMAGE_IMPLEMENTATION
 #include <third_party/stb_image.h>
 
 Texture2D::~Texture2D()
@@ -127,6 +126,64 @@ bool Texture2D::loadFromFile(const std::string& path, const TextureParams& param
     glBindTexture(GL_TEXTURE_2D, 0);
 
     stbi_image_free(data);
+    return true;
+}
+
+bool Texture2D::loadFromMemory(const unsigned char* data,
+                               const int width,
+                               const int height,
+                               const int channels,
+                               const TextureParams& params)
+{
+    destroy();
+    if (!data || width <= 0 || height <= 0 || channels <= 0)
+    {
+        LOG(ERROR) << "[Texture2D] Invalid memory data";
+        return false;
+    }
+
+    m_width = width;
+    m_height = height;
+    m_channels = channels;
+    m_path.clear();
+
+    GLint internalFmt = GL_RGBA8;
+    GLenum dataFmt = GL_RGBA;
+    chooseFormat(channels, params.colorSpace, internalFmt, dataFmt);
+
+    glGenTextures(1, &m_id);
+    glBindTexture(GL_TEXTURE_2D, m_id);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 internalFmt,
+                 width,
+                 height,
+                 0,
+                 dataFmt,
+                 GL_UNSIGNED_BYTE,
+                 data);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, params.wrapS);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, params.wrapT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, params.minFilter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, params.magFilter);
+
+    if (params.generateMipmaps)
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+    if (params.anisotropy > 0.0f && supportsAnisotropy())
+    {
+        float maxA = maxAnisotropy();
+        float a = std::clamp(params.anisotropy, 1.0f, maxA);
+        glTexParameterf(GL_TEXTURE_2D, 0x84FE /*GL_TEXTURE_MAX_ANISOTROPY_EXT*/, a);
+    }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
     return true;
 }
 

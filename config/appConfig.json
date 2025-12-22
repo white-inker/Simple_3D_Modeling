@@ -35,31 +35,31 @@
 
   "lighting":
   {
-    "ambient": [0.1, 0.1, 0.1],
+    "ambient": [0.2, 0.2, 0.2],
 
     "directional":
     {
       "enabled": true,
-      "direction": [-0.2, -1.0, -0.3],
+      "direction": [0.0, 0.0, 1.0],
       "color": [1.0, 1.0, 1.0],
-      "intensity": 1.0
+      "intensity": 10.0
     },
 
     "points":
     [
       {
         "enabled": true,
-        "position": [3.0, 3.0, 3.0],
+        "position": [0.0, 10.0, -3.0],
         "color": [1.0, 1.0, 1.0],
-        "intensity": 15.0,
-        "range": 15.0
+        "intensity": 5.0,
+        "range": 20.0
       },
       {
         "enabled": true,
-        "position": [-3.0, 2.0, -2.0],
+        "position": [0.0, 10.0, -5.0],
         "color": [0.6, 0.7, 1.0],
-        "intensity": 2.0,
-        "range": 10.0
+        "intensity": 5.0,
+        "range": 20.0
       }
     ]
   }

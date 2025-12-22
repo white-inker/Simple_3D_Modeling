@@ -40,6 +40,7 @@ void Application::init()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, AppConfig::instance().glVersion.first);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, AppConfig::instance().glVersion.second);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);

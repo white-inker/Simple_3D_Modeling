@@ -275,5 +275,6 @@ void main()
     // 如果你没有开启 sRGB framebuffer/纹理，建议做输出 gamma 校正：
     // color = pow(color, vec3(1.0/2.2));
 
+	color = color / (color + vec3(1.0)); // Reinhard
     FragColor = vec4(color, alpha);
 }

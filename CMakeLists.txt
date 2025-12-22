@@ -17,6 +17,7 @@ find_package(glad CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+#find_path(TINYGLTF_INCLUDE_DIRS "tiny_gltf.h")
 
 # -------------------------
 # 1) collect sources
@@ -112,4 +113,6 @@ target_link_libraries(test2 PRIVATE
 
 
 add_test(NAME test1 COMMAND test1)
+
+add_test(NAME test2 COMMAND test2)
 

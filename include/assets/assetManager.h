@@ -32,6 +32,9 @@ public:
     std::shared_ptr<Model> loadModelOBJ(const std::string& relativePath,
                                         bool forceReload = false);
 
+    std::shared_ptr<Model> loadModelGLTF2(const std::string& relativePath,
+                                        bool forceReload = false);
+
     // ---------- Shaders ---------
     std::shared_ptr<Shader> loadShader(const std::string& vertRelPath,
                                    const std::string& fragRelPath,

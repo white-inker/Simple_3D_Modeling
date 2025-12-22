@@ -50,6 +50,11 @@ public:
     Texture2D& operator=(Texture2D&& other) noexcept;
 
     bool loadFromFile(const std::string& path, const TextureParams& params = {});
+    bool loadFromMemory(const unsigned char* data,
+                        int width,
+                        int height,
+                        int channels,
+                        const TextureParams& params = {});
     void destroy();
 
     void bind(GLuint unit = 0) const;

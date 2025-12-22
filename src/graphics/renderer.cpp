@@ -98,11 +98,8 @@ void Renderer::renderScene(const Scene& scene,
         const auto& modelPtr = e->getModel();     // std::shared_ptr<Model>
         if (!modelPtr) continue;
 
-        const auto& mat = e->getMaterial();       // Material&（当前：一个 entity 一个材质）
-        if (!mat.isValid()) continue;
-
-        Shader* shader = mat.shader.get();
-        if (!shader) continue;
+        const auto& entityMat = e->getMaterial(); // Material&（当前：一个 entity 一个材质）
+        //if (!entityMat.isValid()) continue;
 
         const glm::mat4 entityModel = e->getTransform().modelMatrix();
 
@@ -110,6 +107,12 @@ void Renderer::renderScene(const Scene& scene,
         for (const auto& sm : modelPtr->submeshes)
         {
             if (!sm.mesh) continue;
+
+            const auto& mat = sm.material ? *sm.material : entityMat;
+            if (!mat.isValid()) continue;
+
+            Shader* shader = mat.shader.get();
+            if (!shader) continue;
 
             DrawCmd c;
             c.program = shader->id();
@@ -119,7 +122,7 @@ void Renderer::renderScene(const Scene& scene,
 
             // 如果 Submesh 有 local 变换：entityModel * sm.local
             // 如果没有 sm.local 字段，就把这一行改为：c.model = entityModel;
-            c.model = entityModel; //* sm.local;
+            c.model = entityModel * sm.local;
 
             // 纹理 key
             c.tBase     = mat.baseColorId();

@@ -49,7 +49,7 @@ public:
 
     bool isRenderable() const
     {
-        return visible && model && material.isValid();
+        return visible && model && !model->submeshes.empty() && (material.isValid() || model->hasMaterial());
     }
 
 private:

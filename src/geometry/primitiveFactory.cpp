@@ -545,7 +545,7 @@ std::shared_ptr<Model> PrimitiveFactory::CreateModel(const PrimitiveDesc& d)
     Model::Submesh sm;
     sm.name = "primitive";
     sm.mesh = mesh;
-    //sm.material = nullptr;
+    sm.material = nullptr;
     sm.local = glm::mat4(1.0f);
 
     model->submeshes.push_back(std::move(sm));
