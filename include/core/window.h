@@ -19,6 +19,7 @@ public:
     InputContext input;
     std::unique_ptr<CameraController> cameraController = nullptr;
     WindowContext windowContext{};
+    bool screenshotRequested = false;
 
     explicit Window(GLFWwindow* window);
     virtual ~Window();
@@ -31,6 +32,7 @@ public:
     void initCameraController(OrbitCamera& camera);
     void handleInput(float dt);
     void renderFrame();
+    bool consumeScreenshotRequest();
 };
 
 #endif //WINDOW_H

@@ -153,7 +153,7 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
     auto model = std::make_shared<Model>();
     model->sourcePath = abs;
 
-    // 每个 shape 可能包含多个 material id，我们按 material 分 submesh（更合理）
+    // 每个 shape 可能包含多个 material id，我们按 material 分 submesh
     for (const auto& shape : shapes)
     {
         // material_id -> builder
@@ -224,7 +224,7 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
                 else
                     vert.normal = faceN; // 缺法线：先用面法线
 
-                std::uint32_t newId = static_cast<std::uint32_t>(b.verts.size());
+                auto newId = static_cast<std::uint32_t>(b.verts.size());
                 b.verts.push_back(vert);
                 b.dedup.emplace(key, newId);
                 b.indices.push_back(newId);

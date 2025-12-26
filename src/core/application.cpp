@@ -4,6 +4,11 @@
 #include <utility>
 #include <vector>
 #include <algorithm>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <filesystem>
 
 #include <glad/glad.h>
 
@@ -47,6 +52,10 @@ void Application::init()
 #endif
 
     createWindows();
+
+    screenshotDir = getExecutableDir() / "screenshots";
+    std::error_code ec;
+    std::filesystem::create_directories(screenshotDir, ec);
 
     auto assetPath = getExecutableDir() / AppConfig::instance().assetRootDir;
 
@@ -215,6 +224,8 @@ void Application::render()
 
         onRenderWindow(name, *win, deltaTime);
 
+        handleScreenshotRequest(name, *win);
+
         glfwSwapBuffers(w);
     }
 }
@@ -259,11 +270,52 @@ void Application::initWindowOrbitCamera(const WindowConfig &config, Window &wind
 void Application::initWindowInput(const WindowConfig& config, Window& win)
 {
     glfwSetInputMode(win.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    win.input.OnMouseMove(config.windowWidth * 0.5f, config.windowHeight * 0.5f);
+    win.input.OnMouseMove(static_cast<float>(config.windowWidth) * 0.5f, static_cast<float>(config.windowHeight) * 0.5f);
     win.input.Update();
     const auto pos = win.input.GetMousePosition();
     glfwSetCursorPos(win.window, pos.x , pos.y);
 }
+
+void Application::handleScreenshotRequest(const std::string& windowName, Window& win)
+{
+    if (!renderer) return;
+    if (!win.consumeScreenshotRequest()) return;
+
+    const auto path = buildScreenshotPath(windowName);
+    if (path.empty()) return;
+
+    const auto parent = path.parent_path();
+    std::error_code ec;
+    if (!parent.empty())
+        std::filesystem::create_directories(parent, ec);
+
+    renderer->saveScreenshot(path);
+}
+
+std::filesystem::path Application::buildScreenshotPath(const std::string& windowName) const
+{
+    using clock = std::chrono::system_clock;
+    const auto now = clock::now();
+    const auto tt = clock::to_time_t(now);
+    std::tm tm{};
+#ifdef _WIN32
+    localtime_s(&tm, &tt);
+#else
+    localtime_r(&tt, &tm);
+#endif
+
+    const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+
+    std::ostringstream oss;
+    oss << windowName << "_"
+        << std::put_time(&tm, "%Y%m%d_%H%M%S")
+        << "_" << std::setw(3) << std::setfill('0') << millis.count()
+        << ".png";
+
+    const auto dir = screenshotDir.empty() ? getExecutableDir() / "screenshots" : screenshotDir;
+    return dir / oss.str();
+}
+
 
 
 

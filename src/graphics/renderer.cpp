@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <third_party/stb_image_write.h>
 
 #include <scene/scene.h>
 #include <scene/entity.h>
@@ -229,6 +230,41 @@ void Renderer::renderScene(const Scene& scene,
         setBlend(baseBlendEnabled);
         setCull(baseCullEnabled);
         setDepthWrite(true);
+    }
+}
+
+void Renderer::saveScreenshot(const std::filesystem::path& path)
+{
+    if (!currentWindow)
+    {
+        LOG(WARNING) << "Renderer::saveScreenshot called with no active window";
+        return;
+    }
+
+    int width = 0;
+    int height = 0;
+    glfwGetFramebufferSize(currentWindow, &width, &height);
+    if (width <= 0 || height <= 0)
+    {
+        LOG(WARNING) << "Renderer::saveScreenshot skipped because framebuffer size is invalid";
+        return;
+    }
+
+    std::vector<unsigned char> pixels(static_cast<size_t>(width) * static_cast<size_t>(height) * 4);
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadBuffer(GL_BACK);
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+
+    stbi_flip_vertically_on_write(1);
+    const int stride = width * 4;
+    if (stbi_write_png(path.string().c_str(), width, height, 4, pixels.data(), stride) == 0)
+    {
+        LOG(ERROR) << "Failed to write screenshot to " << path;
+    }
+    else
+    {
+        LOG(INFO) << "Saved screenshot to " << path;
     }
 }
 

@@ -7,9 +7,7 @@
 
 #include <array>
 #include <utils/common.h>
-#include <string>
-#include <unordered_map>
-#include <vector>
+#include <filesystem>
 
 class Scene;
 class Shader;
@@ -43,6 +41,8 @@ public:
                      const glm::mat4& view,
                      const glm::mat4& proj,
                      const glm::vec3& viewPos);
+
+    void saveScreenshot(const std::filesystem::path& path);
 
 private:
     // --- frame ---

@@ -36,14 +36,24 @@ void Window::initCameraController(OrbitCamera &camera)
 void Window::handleInput(float dt)
 {
     // 处理相机的参数
-    //LOG(ERROR) << "Window::handleInput hasn't been implemented yet!";
     cameraController->update(input, dt, this);
+
+    if (input.IsKeyPressed(GLFW_KEY_P) || input.IsKeyPressed(GLFW_KEY_F12))
+        screenshotRequested = true;
+
     input.Update();
 }
 
 void Window::renderFrame()
 {
     //LOG(ERROR) << "Window::randerFrame hasn't been implemented yet!";
+}
+
+bool Window::consumeScreenshotRequest()
+{
+    const bool requested = screenshotRequested;
+    screenshotRequested = false;
+    return requested;
 }
 
 

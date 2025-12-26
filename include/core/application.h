@@ -42,6 +42,8 @@ private:
     static void initWindowFPSCamera(const WindowConfig& config, Window& window);
     static void initWindowOrbitCamera(const WindowConfig& config, Window& window);
     [[nodiscard]] bool isRunning() const;
+    void handleScreenshotRequest(const std::string& windowName, Window& win);
+    [[nodiscard]] std::filesystem::path buildScreenshotPath(const std::string& windowName) const;
 
     void updateTime();
 
@@ -55,6 +57,7 @@ protected:
     std::unique_ptr<AssetManager> assetManager;
     std::unique_ptr<Scene> scene;
     std::unique_ptr<Renderer> renderer;
+    std::filesystem::path screenshotDir;
 
     // timing
     float timeNow = 0.0f;
