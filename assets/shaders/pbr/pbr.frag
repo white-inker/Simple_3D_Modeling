@@ -58,6 +58,12 @@ uniform sampler2D MetallicRoughnessMap;    // slot 2 (常见：G=roughness, B=me
 uniform sampler2D OcclusionMap;            // slot 3 (R=AO)
 uniform sampler2D EmissiveMap;             // slot 4
 
+// shadow mapping
+uniform mat4 LightSpaceMatrix;
+uniform sampler2D ShadowMap;               // slot 5
+uniform float ShadowBias;
+uniform int EnableShadow;
+
 // ---------------- Helpers ----------------
 const float PI = 3.14159265359;
 
@@ -128,6 +134,36 @@ vec3 applyNormalMap(vec3 N, vec3 worldPos, vec2 uv)
 
     mat3 TBN = cotangentFrame(N, worldPos, uv);
     return normalize(TBN * nTex);
+}
+
+float computeShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
+{
+    if (EnableShadow == 0) return 0.0;
+
+    vec4 lightSpacePos = LightSpaceMatrix * vec4(worldPos, 1.0);
+    vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if (projCoords.z > 1.0)
+        return 0.0;
+
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
+        return 1.0;
+
+    float bias = max(ShadowBias * (1.0 - dot(normal, lightDir)), ShadowBias * 0.5);
+    vec2 texelSize = 1.0 / textureSize(ShadowMap, 0);
+
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; ++x)
+    {
+        for (int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(ShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+            shadow += projCoords.z - bias > pcfDepth ? 1.0 : 0.0;
+        }
+    }
+
+    return shadow / 9.0;
 }
 
 // 点光衰减：逆平方 + range 截断（smoothstep）
@@ -235,7 +271,9 @@ void main()
             // Lambert diffuse: albedo / PI
             vec3 diffuse = kD * albedo / PI;
 
-            Lo += (diffuse + specular) * radiance * NdotL;
+            float shadow = computeShadow(fs_in.WorldPos, N, L);
+
+            Lo += (diffuse + specular) * radiance * NdotL * (1.0 - shadow);
         }
     }
 
