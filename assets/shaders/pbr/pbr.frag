@@ -144,27 +144,32 @@ float computeShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
     vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
     projCoords = projCoords * 0.5 + 0.5;
 
-    if (projCoords.z > 1.0)
+    // outside light clip -> no shadow
+    if (projCoords.z < 0.0 || projCoords.z > 1.0) return 0.0;
+
+    // outside shadow map -> no shadow (and matches CLAMP_TO_BORDER=1)
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
         return 0.0;
 
-    if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
-        return 1.0;
+    normal   = normalize(normal);
+    lightDir = normalize(lightDir);
 
-    float bias = max(ShadowBias * (1.0 - dot(normal, lightDir)), ShadowBias * 0.5);
-    vec2 texelSize = 1.0 / textureSize(ShadowMap, 0);
+    float ndotl = max(dot(normal, lightDir), 0.0);
+    float bias = max(ShadowBias * (1.0 - ndotl), ShadowBias * 0.5);
+
+    vec2 texelSize = 1.0 / vec2(textureSize(ShadowMap, 0));
 
     float shadow = 0.0;
     for (int x = -1; x <= 1; ++x)
+    for (int y = -1; y <= 1; ++y)
     {
-        for (int y = -1; y <= 1; ++y)
-        {
-            float pcfDepth = texture(ShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
-            shadow += projCoords.z - bias > pcfDepth ? 1.0 : 0.0;
-        }
+        float closest = texture(ShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
+        shadow += (projCoords.z - bias > closest) ? 1.0 : 0.0;
     }
 
     return shadow / 9.0;
 }
+
 
 // 点光衰减：逆平方 + range 截断（smoothstep）
 vec3 pointLightRadiance(PointLight light, vec3 worldPos, out vec3 L, out float NdotL, vec3 N)

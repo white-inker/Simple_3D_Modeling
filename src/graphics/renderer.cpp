@@ -17,6 +17,7 @@
 #include <graphics/material.h>
 #include <scene/transform.h>
 #include <assets/model.h>
+#include <glm/gtx/norm.hpp>
 
 struct DrawCmd
 {
@@ -294,8 +295,8 @@ bool Renderer::ensureShadowResources()
                  GL_DEPTH_COMPONENT,
                  GL_FLOAT,
                  nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
     const float borderColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -371,6 +372,8 @@ bool Renderer::renderShadowMap(const std::vector<DrawCmd>& commands, const glm::
     glClear(GL_DEPTH_BUFFER_BIT);
     const GLboolean depthEnabled = glIsEnabled(GL_DEPTH_TEST);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(2.0f, 4.0f);
 
     setDepthWrite(true);
     setBlend(false);
@@ -392,6 +395,7 @@ bool Renderer::renderShadowMap(const std::vector<DrawCmd>& commands, const glm::
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 
+    glDisable(GL_POLYGON_OFFSET_FILL);
     if (depthEnabled == GL_FALSE)
         glDisable(GL_DEPTH_TEST);
 
@@ -565,12 +569,12 @@ void Renderer::bindTexture(const GLuint unit, const GLuint tex)
 
 // ---------------- uploads ----------------
 
-void Renderer::uploadGlobals(Shader& shader,
-                             const Scene& scene,
-                             const glm::mat4& view,
-                             const glm::mat4& proj,
-                             const glm::vec3& viewPos,
-                             const ShadowContext& shadow)
+void Renderer::uploadGlobals(Shader &shader,
+                            const Scene &scene,
+                            const glm::mat4 &view,
+                            const glm::mat4 &proj,
+                            const glm::vec3 &viewPos,
+                            const ShadowContext &shadow)
 {
     shader.setMat4("View", view);
     shader.setMat4("Proj", proj);

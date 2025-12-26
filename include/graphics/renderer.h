@@ -50,6 +50,24 @@ public:
     void saveScreenshot(const std::filesystem::path& path);
 
 private:
+    // --- shadow mapping ---
+    struct ShadowContext
+    {
+        bool enabled = false;
+        glm::mat4 lightSpace{1.0f};
+        GLuint shadowMap = 0;
+        float bias = 0.0015f;
+    };
+
+    struct ShadowResources
+    {
+        GLuint fbo = 0;
+        GLuint map = 0;
+        glm::mat4 lightSpace{1.0f};
+
+        bool available() const { return fbo != 0 && map != 0; }
+    };
+
     // --- frame ---
     static void applyViewport(GLFWwindow* window);
 
@@ -72,7 +90,7 @@ private:
                        const glm::mat4& view,
                        const glm::mat4& proj,
                        const glm::vec3& viewPos,
-                       const struct ShadowContext& shadow);
+                       const ShadowContext& shadow);
 
     void uploadMaterial(Shader& shader, const Material& mat);
 
@@ -80,24 +98,6 @@ private:
     static void drawMesh(const Mesh& mesh);
 
 private:
-    // --- shadow mapping ---
-    struct ShadowContext
-    {
-        bool enabled = false;
-        glm::mat4 lightSpace{1.0f};
-        GLuint shadowMap = 0;
-        float bias = 0.0015f;
-    };
-
-    struct ShadowResources
-    {
-        GLuint fbo = 0;
-        GLuint map = 0;
-        glm::mat4 lightSpace{1.0f};
-
-        bool available() const { return fbo != 0 && map != 0; }
-    };
-
     bool ensureShadowResources();
     bool ensureShadowShader();
     bool renderShadowMap(const std::vector<struct DrawCmd>& commands, const glm::mat4& lightSpace);
@@ -124,11 +124,11 @@ private:
     // shadow config/state
     ShadowResources shadowResources{};
     std::unique_ptr<Shader> shadowShader;
-    int shadowMapSize = 2048;
-    float shadowOrthoSize = 20.0f;
-    float shadowNearPlane = 0.5f;
-    float shadowFarPlane = 80.0f;
-    float shadowBias = 0.0015f;
+    int shadowMapSize = 4096;
+    float shadowOrthoSize = 12.0f;
+    float shadowNearPlane = 5.0f;
+    float shadowFarPlane = 50.0f;
+    float shadowBias = 0.0005f;
 };
 
 

@@ -24,6 +24,9 @@ inline void TestApplication::initSceneEntity()
     pDesc.size = {1.0, 1.0, 1.0};
     auto cubeModel = PrimitiveFactory::CreateModel(pDesc);
 
+    pDesc.size = {20, 0.01, 20};
+    auto floorModel = PrimitiveFactory::CreateModel(pDesc);
+
     pDesc.type = PrimitiveType::Sphere;
     pDesc.radius = 1.0f;
     auto sphereModel = PrimitiveFactory::CreateModel(pDesc);
@@ -46,6 +49,11 @@ inline void TestApplication::initSceneEntity()
     if (!pbrShader) LOG(ERROR) << "Shader load fail" ;
     auto material = Material();
     material.shader = pbrShader;
+
+    auto& floorEntity = scene->createEntity("Floor");
+    floorEntity.setModel(floorModel);
+    floorEntity.setMaterial(material);
+    floorEntity.getTransform().setPosition({0.0, -1.0, 0.0});
 
     auto& cubeEntity = scene->createEntity("Cube");
     cubeEntity.setModel(cubeModel);
@@ -75,6 +83,12 @@ inline void TestApplication::initSceneEntity()
     frustumEntity.setModel(frustumModel);
     frustumEntity.setMaterial(material);
     frustumEntity.getTransform().setPosition({8.0, 0.0, 0.0});
+
+    scene->getLighting().directional()->direction = {0.5, -1.0, -0.5};
+    scene->getLighting().directional()->intensity = 2.0;
+
+    scene->getLighting().pointLights()[0]->enabled = false;
+    scene->getLighting().pointLights()[1]->enabled = false;
 }
 
 
