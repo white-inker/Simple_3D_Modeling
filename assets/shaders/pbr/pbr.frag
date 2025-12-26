@@ -62,6 +62,7 @@ uniform sampler2D EmissiveMap;             // slot 4
 uniform mat4 LightSpaceMatrix;
 uniform sampler2D ShadowMap;               // slot 5
 uniform float ShadowBias;
+uniform float ShadowNormalBias;
 uniform int EnableShadow;
 
 // ---------------- Helpers ----------------
@@ -140,7 +141,14 @@ float computeShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
 {
     if (EnableShadow == 0) return 0.0;
 
-    vec4 lightSpacePos = LightSpaceMatrix * vec4(worldPos, 1.0);
+    normal   = normalize(normal);
+    lightDir = normalize(lightDir);
+
+    float ndotl = max(dot(normal, lightDir), 0.0);
+
+    // receiver-plane normal bias to fight acne when the surface is far from the light map center
+    float normalOffset = ShadowNormalBias * (1.0 - ndotl);
+    vec4 lightSpacePos = LightSpaceMatrix * vec4(worldPos + normal * normalOffset, 1.0);
     vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
     projCoords = projCoords * 0.5 + 0.5;
 
@@ -151,20 +159,18 @@ float computeShadow(vec3 worldPos, vec3 normal, vec3 lightDir)
     if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0)
         return 0.0;
 
-    normal   = normalize(normal);
-    lightDir = normalize(lightDir);
-
-    float ndotl = max(dot(normal, lightDir), 0.0);
-    float bias = max(ShadowBias * (1.0 - ndotl), ShadowBias * 0.5);
-
     vec2 texelSize = 1.0 / vec2(textureSize(ShadowMap, 0));
+	float slopeBias = ShadowBias * (1.0 - ndotl);
+    float receiverBias = ShadowBias * max(texelSize.x, texelSize.y) * 1.5;
+    float bias = max(slopeBias, receiverBias);
 
     float shadow = 0.0;
     for (int x = -1; x <= 1; ++x)
     for (int y = -1; y <= 1; ++y)
     {
         float closest = texture(ShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
-        shadow += (projCoords.z - bias > closest) ? 1.0 : 0.0;
+        float currentDepth = projCoords.z - bias;
+        shadow += (currentDepth > closest) ? 1.0 : 0.0;
     }
 
     return shadow / 9.0;

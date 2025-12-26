@@ -175,6 +175,7 @@ void Renderer::renderScene(const Scene& scene,
 
     ShadowContext shadowCtx{};
     shadowCtx.bias = shadowBias;
+    shadowCtx.normalBias = shadowNormalBias;
 
     const DirectionalLight* dirLight = scene.getLighting().directional();
     const bool hasDirectional = dirLight && dirLight->enabled && dirLight->intensity > 0.0f;
@@ -620,6 +621,7 @@ void Renderer::uploadGlobals(Shader &shader,
         shader.setInt("EnableShadow", 1);
         shader.setMat4("LightSpaceMatrix", shadow.lightSpace);
         shader.setFloat("ShadowBias", shadow.bias);
+        shader.setFloat("ShadowNormalBias", shadow.normalBias);
         bindTexture(5, shadow.shadowMap);
         shader.setInt("ShadowMap", 5);
     }

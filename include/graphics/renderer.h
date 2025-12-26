@@ -57,6 +57,7 @@ private:
         glm::mat4 lightSpace{1.0f};
         GLuint shadowMap = 0;
         float bias = 0.0015f;
+        float normalBias = 0.01f;
     };
 
     struct ShadowResources
@@ -126,9 +127,10 @@ private:
     std::unique_ptr<Shader> shadowShader;
     int shadowMapSize = 4096;
     float shadowOrthoSize = 12.0f;
-    float shadowNearPlane = 5.0f;
-    float shadowFarPlane = 50.0f;
+    float shadowNearPlane = 2.0f;
+    float shadowFarPlane = 20.0f;
     float shadowBias = 0.0005f;
+    float shadowNormalBias = 0.05f;
 };
 
 

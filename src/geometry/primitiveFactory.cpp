@@ -328,7 +328,7 @@ static void buildPrism(const PrimitiveDesc& d,
         glm::vec3 p11(std::cos(a1)*r, yTop, std::sin(a1)*r);
 
         // face normal (flat)
-        glm::vec3 n = faceNormal(p01, p00, p10);
+        glm::vec3 n = faceNormal(p00, p01, p10);
 
         std::uint32_t base = static_cast<std::uint32_t>(outV.size());
         outV.push_back({p00, n, {u0, 0.0f}});
@@ -336,8 +336,8 @@ static void buildPrism(const PrimitiveDesc& d,
         outV.push_back({p11, n, {u1, 1.0f}});
         outV.push_back({p10, n, {u1, 0.0f}});
 
-        outI.push_back(base+1); outI.push_back(base+0); outI.push_back(base+3);
-        outI.push_back(base+1); outI.push_back(base+3); outI.push_back(base+2);
+        outI.push_back(base+0); outI.push_back(base+1); outI.push_back(base+3);
+        outI.push_back(base+1); outI.push_back(base+2); outI.push_back(base+3);
     }
 
     // caps: polygon fan
@@ -345,7 +345,7 @@ static void buildPrism(const PrimitiveDesc& d,
     {
         // top
         {
-            std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+            auto base = static_cast<std::uint32_t>(outV.size());
             outV.push_back({{0,yTop,0}, {0,1,0}, {0.5f,0.5f}});
 
             std::vector<std::uint32_t> ring(sides);
@@ -372,7 +372,7 @@ static void buildPrism(const PrimitiveDesc& d,
 
         // bottom
         {
-            std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+            auto base = static_cast<std::uint32_t>(outV.size());
             outV.push_back({{0,yBot,0}, {0,-1,0}, {0.5f,0.5f}});
 
             std::vector<std::uint32_t> ring(sides);
@@ -427,7 +427,7 @@ static void buildFrustum(const PrimitiveDesc& d,
         glm::vec3 b1(std::cos(a1)*rb, yBot, std::sin(a1)*rb);
         glm::vec3 t1(std::cos(a1)*rt, yTop, std::sin(a1)*rt);
 
-        glm::vec3 n = faceNormal(t0, b0, b1);
+        glm::vec3 n = faceNormal(b0, t0, b1);
 
         std::uint32_t base = static_cast<std::uint32_t>(outV.size());
         outV.push_back({b0, n, {u0, 0.0f}});
@@ -435,8 +435,8 @@ static void buildFrustum(const PrimitiveDesc& d,
         outV.push_back({t1, n, {u1, 1.0f}});
         outV.push_back({b1, n, {u1, 0.0f}});
 
-        outI.push_back(base+1); outI.push_back(base+0); outI.push_back(base+3);
-        outI.push_back(base+1); outI.push_back(base+3); outI.push_back(base+2);
+        outI.push_back(base+0); outI.push_back(base+1); outI.push_back(base+3);
+        outI.push_back(base+1); outI.push_back(base+2); outI.push_back(base+3);
     }
 
     // caps (optional)

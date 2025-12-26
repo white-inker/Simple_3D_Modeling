@@ -39,7 +39,7 @@ inline void TestApplication::initSceneEntity()
     auto coneModel = PrimitiveFactory::CreateModel(pDesc);
 
     pDesc.type = PrimitiveType::Prism;
-    pDesc.sides = 5;
+    pDesc.sides = 7;
     auto prismModel = PrimitiveFactory::CreateModel(pDesc);
 
     pDesc.type = PrimitiveType::Frustum;
@@ -62,7 +62,7 @@ inline void TestApplication::initSceneEntity()
     auto& sphereEntity = scene->createEntity("Sphere");
     sphereEntity.setModel(sphereModel);
     sphereEntity.setMaterial(material);
-    sphereEntity.getTransform().setPosition({-2.0, 0.0, 0.0});
+    sphereEntity.getTransform().setPosition({0.0, 2.0, 0.0});
 
     auto& cylinderEntity = scene->createEntity("Cylinder");
     cylinderEntity.setModel(cylinderModel);
@@ -72,22 +72,23 @@ inline void TestApplication::initSceneEntity()
     auto& coneEntity = scene->createEntity("Cone");
     coneEntity.setModel(coneModel);
     coneEntity.setMaterial(material);
-    coneEntity.getTransform().setPosition({4.0, 0.0, 0.0});
+    coneEntity.getTransform().setPosition({0.0, 0.0, 2.0});
 
     auto& prismEntity = scene->createEntity("Prism");
     prismEntity.setModel(prismModel);
     prismEntity.setMaterial(material);
-    prismEntity.getTransform().setPosition({6.0, 0.0, 0.0});
+    prismEntity.getTransform().setPosition({-2.0, 0.0, 0.0});
 
     auto& frustumEntity = scene->createEntity("Frustum");
     frustumEntity.setModel(frustumModel);
     frustumEntity.setMaterial(material);
-    frustumEntity.getTransform().setPosition({8.0, 0.0, 0.0});
+    frustumEntity.getTransform().setPosition({0.0, 0.0, -1.5});
 
     scene->getLighting().directional()->direction = {0.5, -1.0, -0.5};
     scene->getLighting().directional()->intensity = 2.0;
+    scene->getLighting().directional()->color = {0.8, 0.8, 0.9};
 
-    scene->getLighting().pointLights()[0]->enabled = false;
+    scene->getLighting().pointLights()[0]->position = {-10.0, 2.0, 0.0};
     scene->getLighting().pointLights()[1]->enabled = false;
 }
 
