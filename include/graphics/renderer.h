@@ -102,7 +102,10 @@ private:
     bool ensureShadowResources();
     bool ensureShadowShader();
     bool renderShadowMap(const std::vector<struct DrawCmd>& commands, const glm::mat4& lightSpace);
-    glm::mat4 buildDirectionalLightMatrix(const DirectionalLight& light, const glm::vec3& focus) const;
+    [[nodiscard]] glm::mat4 buildDirectionalLightMatrix(const DirectionalLight& light,
+                                          const glm::mat4& view,
+                                          const glm::mat4& proj,
+                                          const glm::vec3& focus) const;
     void destroyShadowResources();
 
     GLFWwindow* currentWindow = nullptr;
@@ -126,9 +129,8 @@ private:
     ShadowResources shadowResources{};
     std::unique_ptr<Shader> shadowShader;
     int shadowMapSize = 4096;
-    float shadowOrthoSize = 12.0f;
-    float shadowNearPlane = 2.0f;
-    float shadowFarPlane = 20.0f;
+    float shadowDistance = 20.0f;
+    float shadowBoundsPadding = 2.0f;
     float shadowBias = 0.0005f;
     float shadowNormalBias = 0.05f;
 };
