@@ -4,7 +4,9 @@
 #include "graphics/Renderer.h"
 
 #include <algorithm>
+#include <cmath>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <third_party/stb_image_write.h>
 
 #include <scene/scene.h>
@@ -38,12 +40,33 @@ struct DrawCmd
     float depthKey = 0.0f; // for transparent sorting (far->near)
 };
 
+static const char* SHADOW_DEPTH_VERT = R"(#version 330 core
+layout(location = 0) in vec3 aPos;
+
+uniform mat4 Model;
+uniform mat4 LightSpaceMatrix;
+
+void main()
+{
+    gl_Position = LightSpaceMatrix * Model * vec4(aPos, 1.0);
+}
+)";
+
+static const char* SHADOW_DEPTH_FRAG = R"(#version 330 core
+void main() { }
+)";
+
 static bool isCmdValid(const DrawCmd& c)
 {
     return c.shader && c.mesh && c.mat && c.program != 0;
 }
 
 // ----------- Renderer impl -----------
+
+Renderer::~Renderer()
+{
+    destroyShadowResources();
+}
 
 void Renderer::beginFrame(GLFWwindow* window, const FrameParams& params)
 {
@@ -83,12 +106,14 @@ void Renderer::renderScene(const Scene& scene,
 {
     std::vector<DrawCmd> opaque;
     std::vector<DrawCmd> transparent;
+    std::vector<DrawCmd> shadowCommands;
 
     const auto& entities = scene.getEntities();
 
     // 预估容量
     opaque.reserve(entities.size() * 2);
     transparent.reserve(entities.size());
+    shadowCommands.reserve(entities.size() * 2);
 
     // 1) collect commands
     for (const auto& ePtr : entities)
@@ -139,12 +164,30 @@ void Renderer::renderScene(const Scene& scene,
             const glm::vec3 worldPos = glm::vec3(c.model[3]);
             c.depthKey = glm::length(worldPos - viewPos);
 
+            shadowCommands.push_back(c);
             (c.alphaBlend ? transparent : opaque).push_back(c);
         }
     }
 
     if (opaque.empty() && transparent.empty())
         return;
+
+    ShadowContext shadowCtx{};
+    shadowCtx.bias = shadowBias;
+
+    const DirectionalLight* dirLight = scene.getLighting().directional();
+    const bool hasDirectional = dirLight && dirLight->enabled && dirLight->intensity > 0.0f;
+
+    if (hasDirectional && !shadowCommands.empty())
+    {
+        const glm::mat4 lightSpace = buildDirectionalLightMatrix(*dirLight, viewPos);
+        if (renderShadowMap(shadowCommands, lightSpace))
+        {
+            shadowCtx.enabled = true;
+            shadowCtx.lightSpace = lightSpace;
+            shadowCtx.shadowMap = shadowResources.map;
+        }
+    }
 
     // 2) sort opaque to minimize state changes
     std::sort(opaque.begin(), opaque.end(), [](const DrawCmd& a, const DrawCmd& b) {
@@ -178,7 +221,7 @@ void Renderer::renderScene(const Scene& scene,
         {
             bindProgram(c.program);
             //c.shader->bind();
-            uploadGlobals(*c.shader, scene, view, proj, viewPos);
+            uploadGlobals(*c.shader, scene, view, proj, viewPos, shadowCtx);
             lastProgram = c.program;
         }
 
@@ -207,7 +250,7 @@ void Renderer::renderScene(const Scene& scene,
             {
                 bindProgram(c.program);
                 //c.shader->bind();
-                uploadGlobals(*c.shader, scene, view, proj, viewPos);
+                uploadGlobals(*c.shader, scene, view, proj, viewPos, shadowCtx);
                 lastProgram = c.program;
             }
 
@@ -230,6 +273,146 @@ void Renderer::renderScene(const Scene& scene,
         setBlend(baseBlendEnabled);
         setCull(baseCullEnabled);
         setDepthWrite(true);
+    }
+}
+
+bool Renderer::ensureShadowResources()
+{
+    if (shadowResources.available())
+        return true;
+
+    glGenFramebuffers(1, &shadowResources.fbo);
+    glGenTextures(1, &shadowResources.map);
+
+    glBindTexture(GL_TEXTURE_2D, shadowResources.map);
+    glTexImage2D(GL_TEXTURE_2D,
+                 0,
+                 GL_DEPTH_COMPONENT24,
+                 shadowMapSize,
+                 shadowMapSize,
+                 0,
+                 GL_DEPTH_COMPONENT,
+                 GL_FLOAT,
+                 nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    const float borderColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowResources.fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowResources.map, 0);
+    glDrawBuffer(GL_NONE);
+    glReadBuffer(GL_NONE);
+
+    const bool complete = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    if (!complete)
+    {
+        LOG(ERROR) << "Shadow framebuffer is incomplete";
+        destroyShadowResources();
+        return false;
+    }
+
+    return true;
+}
+
+bool Renderer::ensureShadowShader()
+{
+    if (shadowShader) return true;
+
+    auto shader = std::make_unique<Shader>();
+    if (!shader->loadFromSource(SHADOW_DEPTH_VERT, SHADOW_DEPTH_FRAG))
+    {
+        LOG(ERROR) << "Failed to compile shadow shader";
+        return false;
+    }
+
+    shadowShader = std::move(shader);
+    return true;
+}
+
+glm::mat4 Renderer::buildDirectionalLightMatrix(const DirectionalLight& light, const glm::vec3& focus) const
+{
+    glm::vec3 dir = glm::normalize(light.direction);
+    if (glm::length2(dir) < 1e-4f) dir = glm::vec3(0.0f, -1.0f, 0.0f);
+
+    const glm::vec3 lightPos = focus - dir * shadowFarPlane * 0.5f;
+    const glm::vec3 up = (std::abs(glm::dot(dir, glm::vec3(0, 1, 0))) > 0.99f)
+                         ? glm::vec3(0, 0, 1)
+                         : glm::vec3(0, 1, 0);
+
+    const glm::mat4 lightView = glm::lookAt(lightPos, focus, up);
+    const glm::mat4 lightProj = glm::ortho(-shadowOrthoSize,
+                                           shadowOrthoSize,
+                                           -shadowOrthoSize,
+                                           shadowOrthoSize,
+                                           shadowNearPlane,
+                                           shadowFarPlane);
+
+    return lightProj * lightView;
+}
+
+bool Renderer::renderShadowMap(const std::vector<DrawCmd>& commands, const glm::mat4& lightSpace)
+{
+    if (commands.empty()) return false;
+    if (!ensureShadowResources()) return false;
+    if (!ensureShadowShader()) return false;
+
+    shadowResources.lightSpace = lightSpace;
+
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowResources.fbo);
+    glViewport(0, 0, shadowMapSize, shadowMapSize);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    const GLboolean depthEnabled = glIsEnabled(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+
+    setDepthWrite(true);
+    setBlend(false);
+    setCull(true);
+
+    bindProgram(shadowShader->id());
+    shadowShader->setMat4("LightSpaceMatrix", lightSpace);
+
+    for (const auto& c : commands)
+    {
+        if (!isCmdValid(c)) continue;
+
+        setCull(baseCullEnabled && !c.doubleSided);
+
+        shadowShader->setMat4("Model", c.model);
+        drawMesh(*c.mesh);
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+
+    if (depthEnabled == GL_FALSE)
+        glDisable(GL_DEPTH_TEST);
+
+    setDepthWrite(true);
+    setBlend(baseBlendEnabled);
+    setCull(baseCullEnabled);
+
+    return true;
+}
+
+void Renderer::destroyShadowResources()
+{
+    if (shadowResources.map)
+    {
+        glDeleteTextures(1, &shadowResources.map);
+        shadowResources.map = 0;
+    }
+    if (shadowResources.fbo)
+    {
+        glDeleteFramebuffers(1, &shadowResources.fbo);
+        shadowResources.fbo = 0;
     }
 }
 
@@ -386,7 +569,8 @@ void Renderer::uploadGlobals(Shader& shader,
                              const Scene& scene,
                              const glm::mat4& view,
                              const glm::mat4& proj,
-                             const glm::vec3& viewPos)
+                             const glm::vec3& viewPos,
+                             const ShadowContext& shadow)
 {
     shader.setMat4("View", view);
     shader.setMat4("Proj", proj);
@@ -426,6 +610,19 @@ void Renderer::uploadGlobals(Shader& shader,
         ++count;
     }
     shader.setInt("PointLightCount", count);
+
+    if (shadow.enabled && shadow.shadowMap != 0)
+    {
+        shader.setInt("EnableShadow", 1);
+        shader.setMat4("LightSpaceMatrix", shadow.lightSpace);
+        shader.setFloat("ShadowBias", shadow.bias);
+        bindTexture(5, shadow.shadowMap);
+        shader.setInt("ShadowMap", 5);
+    }
+    else
+    {
+        shader.setInt("EnableShadow", 0);
+    }
 }
 
 void Renderer::uploadMaterial(Shader& shader, const Material& mat)

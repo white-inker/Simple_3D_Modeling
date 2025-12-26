@@ -8,11 +8,15 @@
 #include <array>
 #include <utils/common.h>
 #include <filesystem>
+#include <memory>
+#include <vector>
 
 class Scene;
 class Shader;
 class Mesh;
 class Material;
+class DirectionalLight;
+struct DrawCmd;
 
 class Renderer
 {
@@ -31,6 +35,7 @@ public:
 
 public:
     Renderer() = default;
+    ~Renderer();
 
     // 每帧每窗口调用一次
     void beginFrame(GLFWwindow* window, const FrameParams& params);
@@ -62,11 +67,12 @@ private:
     void bindTexture(GLuint unit, GLuint tex);
 
     // --- uploads (Scheme A: only Shader::setXxx) ---
-    static void uploadGlobals(Shader& shader,
-                              const Scene& scene,
-                              const glm::mat4& view,
-                              const glm::mat4& proj,
-                              const glm::vec3& viewPos);
+    void uploadGlobals(Shader& shader,
+                       const Scene& scene,
+                       const glm::mat4& view,
+                       const glm::mat4& proj,
+                       const glm::vec3& viewPos,
+                       const struct ShadowContext& shadow);
 
     void uploadMaterial(Shader& shader, const Material& mat);
 
@@ -74,6 +80,30 @@ private:
     static void drawMesh(const Mesh& mesh);
 
 private:
+    // --- shadow mapping ---
+    struct ShadowContext
+    {
+        bool enabled = false;
+        glm::mat4 lightSpace{1.0f};
+        GLuint shadowMap = 0;
+        float bias = 0.0015f;
+    };
+
+    struct ShadowResources
+    {
+        GLuint fbo = 0;
+        GLuint map = 0;
+        glm::mat4 lightSpace{1.0f};
+
+        bool available() const { return fbo != 0 && map != 0; }
+    };
+
+    bool ensureShadowResources();
+    bool ensureShadowShader();
+    bool renderShadowMap(const std::vector<struct DrawCmd>& commands, const glm::mat4& lightSpace);
+    glm::mat4 buildDirectionalLightMatrix(const DirectionalLight& light, const glm::vec3& focus) const;
+    void destroyShadowResources();
+
     GLFWwindow* currentWindow = nullptr;
 
     // binding cache
@@ -90,6 +120,15 @@ private:
     bool curDepthWrite    = true;
 
     static constexpr int MAX_POINT_LIGHTS = 16;
+
+    // shadow config/state
+    ShadowResources shadowResources{};
+    std::unique_ptr<Shader> shadowShader;
+    int shadowMapSize = 2048;
+    float shadowOrthoSize = 20.0f;
+    float shadowNearPlane = 0.5f;
+    float shadowFarPlane = 80.0f;
+    float shadowBias = 0.0015f;
 };
 
 
