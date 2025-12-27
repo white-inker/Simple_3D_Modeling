@@ -9,6 +9,7 @@
 #include <geometry/primitiveFactory.h>
 
 #include <scene/scene.h>
+#include <scene/sceneExporter.h>
 
 class TestApplication final : public Application
 {
@@ -33,6 +34,11 @@ inline void TestApplication::initSceneEntity()
     auto& kitchenBlenderEntity = scene->createEntity("KitchenBlender");
     kitchenBlenderEntity.setModel(kitchenBlenderModel);
     kitchenBlenderEntity.getTransform().setPosition({0.0f, 0.0f, 0.0f});
+
+    scene->getLighting().directional()->direction = {0.0, -1.0, 0.0};
+    scene->getLighting().directional()->enableShadow = true;
+
+    //exportSceneToOBJ(*scene, (getExecutableDir() / "models\\test2.obj").string());
 }
 
 

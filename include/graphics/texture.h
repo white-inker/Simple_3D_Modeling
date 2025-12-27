@@ -32,7 +32,7 @@ struct TextureParams
     // 0 表示不设置；否则会 clamp 到硬件支持范围
     float anisotropy = 8.0f;
 
-    // 有些贴图需要强制 4 通道（例如保证 RGBA）
+    // 有些贴图需要强制 4 通道
     // std::nullopt 表示保持原始通道数；可设为 3 或 4
     std::optional<int> forceChannels = std::nullopt;
 };

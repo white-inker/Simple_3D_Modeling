@@ -18,15 +18,12 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/norm.hpp>
 
-namespace
-{
 glm::vec3 safeNormalize(const glm::vec3& n)
 {
     float len2 = glm::length2(n);
     if (len2 < 1e-12f) return {0, 1, 0};
     return n / std::sqrt(len2);
 }
-} // namespace
 
 bool exportSceneToOBJ(const Scene& scene, const std::string& outputPath)
 {

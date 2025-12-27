@@ -337,17 +337,23 @@ bool Renderer::ensureShadowShader()
     return true;
 }
 
+
 glm::mat4 Renderer::buildDirectionalLightMatrix(const DirectionalLight& light,
                                                 const glm::mat4& view,
                                                 const glm::mat4& proj,
-                                                const glm::vec3& focus) const
+                                                const glm::vec3& /*focus*/) const
 {
     glm::vec3 dir = glm::normalize(light.direction);
     if (glm::length2(dir) < 1e-4f) dir = glm::vec3(0.0f, -1.0f, 0.0f);
 
+    const glm::mat4 invView = glm::inverse(view);
+    const glm::vec3 cameraPos = glm::vec3(invView[3]);
+
+    // ---- 1) frustum corners (world) ----
     const glm::mat4 invViewProj = glm::inverse(proj * view);
     std::array<glm::vec3, 8> frustumCorners{};
     int idx = 0;
+
     for (float z : { -1.0f, 1.0f })
         for (float y : { -1.0f, 1.0f })
             for (float x : { -1.0f, 1.0f })
@@ -357,33 +363,31 @@ glm::mat4 Renderer::buildDirectionalLightMatrix(const DirectionalLight& light,
                 frustumCorners[idx++] = glm::vec3(corner);
             }
 
-    std::array<glm::vec3, 8> croppedFrustum{};
-    for (int i = 0; i < 4; ++i)
-        croppedFrustum[i] = frustumCorners[i];
+    // ---- 2) crop far plane to shadowDistance along camera rays ----
+    std::array<glm::vec3, 8> cropped{};
+    for (int i = 0; i < 4; ++i) cropped[i] = frustumCorners[i]; // near plane
 
-    for (int i = 4; i < 8; ++i)
+    for (int i = 4; i < 8; ++i) // far plane
     {
-        const glm::vec3 corner = frustumCorners[i];
-        const glm::vec3 rayDir = glm::normalize(corner - focus);
-        const float distToCorner = glm::length(corner - focus);
-        if (distToCorner < 1e-4f)
-        {
-            croppedFrustum[i] = corner;
-            continue;
-        }
-        const float maxDist = std::min(shadowDistance, distToCorner);
-        croppedFrustum[i] = focus + rayDir * maxDist;
+        glm::vec3 corner = frustumCorners[i];
+        glm::vec3 v = corner - cameraPos;
+        float dist = glm::length(v);
+        if (dist < 1e-6f) { cropped[i] = corner; continue; }
+        glm::vec3 rayDir = v / dist;
+        float maxDist = std::min(shadowDistance, dist);
+        cropped[i] = cameraPos + rayDir * maxDist;
     }
 
+    // ---- 3) compute center/radius (world) ----
     glm::vec3 center(0.0f);
-    for (const auto& c : croppedFrustum) center += c;
-    center /= static_cast<float>(croppedFrustum.size());
+    for (auto& c : cropped) center += c;
+    center /= 8.0f;
 
     float radius = 0.0f;
-    for (const auto& c : croppedFrustum)
-        radius = std::max(radius, glm::length(c - center));
+    for (auto& c : cropped) radius = std::max(radius, glm::length(c - center));
 
-    const glm::vec3 lightPos = center - dir * (radius + shadowBoundsPadding);
+    const float extraAlongLight = shadowBoundsPadding;
+    const glm::vec3 lightPos = center - dir * (radius + extraAlongLight);
 
     const glm::vec3 up = (std::abs(glm::dot(dir, glm::vec3(0, 1, 0))) > 0.99f)
                          ? glm::vec3(0, 0, 1)
@@ -391,30 +395,33 @@ glm::mat4 Renderer::buildDirectionalLightMatrix(const DirectionalLight& light,
 
     const glm::mat4 lightView = glm::lookAt(lightPos, center, up);
 
-    glm::vec3 minBounds(std::numeric_limits<float>::max());
-    glm::vec3 maxBounds(std::numeric_limits<float>::lowest());
-    for (const auto& c : croppedFrustum)
+    // ---- 4) light-space AABB ----
+    glm::vec3 minB(std::numeric_limits<float>::max());
+    glm::vec3 maxB(std::numeric_limits<float>::lowest());
+    for (auto& c : cropped)
     {
-        const glm::vec4 lightSpaceCorner = lightView * glm::vec4(c, 1.0f);
-        minBounds = glm::min(minBounds, glm::vec3(lightSpaceCorner));
-        maxBounds = glm::max(maxBounds, glm::vec3(lightSpaceCorner));
+        glm::vec3 p = glm::vec3(lightView * glm::vec4(c, 1.0f));
+        minB = glm::min(minB, p);
+        maxB = glm::max(maxB, p);
     }
 
-    minBounds -= glm::vec3(shadowBoundsPadding);
-    maxBounds += glm::vec3(shadowBoundsPadding);
+    const float padXY = shadowBoundsPadding;
+    minB.x -= padXY; minB.y -= padXY;
+    maxB.x += padXY; maxB.y += padXY;
 
-    const float nearPlane = std::max(0.1f, -maxBounds.z);
-    const float farPlane = std::max(nearPlane + 1.0f, -minBounds.z);
+    const float padZ = shadowBoundsPadding * 4.0f;
+    minB.z -= padZ;   // 更“远”
+    maxB.z += padZ;   // 更“近”
 
-    const glm::mat4 lightProj = glm::ortho(minBounds.x,
-                                           maxBounds.x,
-                                           minBounds.y,
-                                           maxBounds.y,
-                                           nearPlane,
-                                           farPlane);
+    maxB.z = std::min(maxB.z, -0.001f);
 
+    float nearPlane = std::max(0.001f, -maxB.z);
+    float farPlane  = std::max(nearPlane + 0.01f, -minB.z);
+
+    const glm::mat4 lightProj = glm::ortho(minB.x, maxB.x, minB.y, maxB.y, nearPlane, farPlane);
     return lightProj * lightView;
 }
+
 
 bool Renderer::renderShadowMap(const std::vector<DrawCmd>& commands, const glm::mat4& lightSpace)
 {

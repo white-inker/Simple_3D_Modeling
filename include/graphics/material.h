@@ -66,7 +66,7 @@ public:
     void clampParams()
     {
         metallicFactor  = glm::clamp(metallicFactor,  0.0f, 1.0f);
-        roughnessFactor = glm::clamp(roughnessFactor, 0.04f, 1.0f); // roughness太低会闪，给个下限更稳定
+        roughnessFactor = glm::clamp(roughnessFactor, 0.04f, 1.0f);
         normalScale = glm::max(normalScale, 0.0f);
         occlusionStrength = glm::clamp(occlusionStrength, 0.0f, 1.0f);
         emissiveStrength  = glm::max(emissiveStrength, 0.0f);

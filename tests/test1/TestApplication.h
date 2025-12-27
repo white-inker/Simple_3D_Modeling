@@ -11,6 +11,7 @@
 
 #include "core/window.h"
 #include "scene/scene.h"
+#include <scene/sceneExporter.h>
 
 class TestApplication final : public Application
 {
@@ -94,6 +95,8 @@ inline void TestApplication::initSceneEntity()
 
     scene->getLighting().pointLights()[0]->position = {-10.0, 2.0, 0.0};
     scene->getLighting().pointLights()[1]->enabled = false;
+
+    exportSceneToOBJ(*scene, (getExecutableDir() / "models\\test1.obj").string());
 }
 
 inline void TestApplication::initWindowCamera(const WindowConfig &config, Window &window)
