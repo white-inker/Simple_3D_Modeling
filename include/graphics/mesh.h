@@ -45,6 +45,8 @@ public:
     GLsizei getIndexCount() const { return indexCount; }
     GLsizei getVertexCount() const { return vertexCount; }
     bool hasIndices() const { return indexCount > 0; }
+    const std::vector<Vertex>& getCpuVertices() const { return cpuVertices; }
+    const std::vector<std::uint32_t>& getCpuIndices() const { return cpuIndices; }
 
 private:
     void createOnGPU(const std::vector<Vertex>& vertices,
@@ -59,6 +61,9 @@ private:
 
     GLsizei vertexCount = 0;
     GLsizei indexCount  = 0;
+
+    std::vector<Vertex> cpuVertices;
+    std::vector<std::uint32_t> cpuIndices;
 };
 
 
