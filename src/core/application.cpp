@@ -66,6 +66,9 @@ void Application::init()
     initLightFromConfig();
     initSceneEntity();
 
+    for (auto& [_, win] : windows)
+        win->scene = scene.get();
+
     // 初始时间
     timeLast = static_cast<float>(glfwGetTime());
 }
