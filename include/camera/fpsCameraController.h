@@ -27,6 +27,11 @@ public:
 
     int lookMouseButton = GLFW_MOUSE_BUTTON_RIGHT;
 
+    // collision options
+    bool enableCollision = false;
+    float collisionRadius = 0.5f;
+    float collisionOffset = 0.05f; // keep a small distance from surfaces
+
     void update(const InputContext& input, float dt, void* ptr) override;
     Camera& getCamera() override { return m_cam;}
 

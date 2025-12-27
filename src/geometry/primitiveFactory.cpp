@@ -15,6 +15,7 @@
 
 #include <graphics/mesh.h>
 #include <assets/model.h>
+#include <geometry/aabb.h>
 
 static int clampMin(int v, int mn) { return std::max(v, mn); }
 
@@ -541,12 +542,24 @@ std::shared_ptr<Model> PrimitiveFactory::CreateModel(const PrimitiveDesc& d)
 
     auto model = std::make_shared<Model>();
     model->sourcePath = "primitive";
+    model->bounds.reset();
 
     Model::Submesh sm;
     sm.name = "primitive";
     sm.mesh = mesh;
     sm.material = nullptr;
     sm.local = glm::mat4(1.0f);
+
+    // compute primitive bounding box (local space)
+    AABB bounds;
+    bounds.reset();
+    if (!V.empty())
+    {
+        for (const auto& v : V)
+            bounds.expand(v.position);
+    }
+    sm.localBounds = bounds;
+    model->bounds.include(transformAABB(sm.localBounds, sm.local));
 
     model->submeshes.push_back(std::move(sm));
     return model;

@@ -11,6 +11,7 @@
 
 #include <graphics/mesh.h>
 #include <graphics/material.h>
+#include <geometry/aabb.h>
 
 // tinyobjloader
 #include <third_party/tiny_obj_loader.h>
@@ -152,6 +153,8 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
 
     auto model = std::make_shared<Model>();
     model->sourcePath = abs;
+    model->bounds.reset();
+    model->bounds.reset();
 
     // 每个 shape 可能包含多个 material id，我们按 material 分 submesh
     for (const auto& shape : shapes)
@@ -246,6 +249,10 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
             sm.mesh = mesh;
             sm.material = nullptr;
             sm.local = glm::mat4(1.0f);
+            sm.localBounds.reset();
+            for (const auto& v : b.verts)
+                sm.localBounds.expand(v.position);
+            model->bounds.include(transformAABB(sm.localBounds, sm.local));
 
             model->submeshes.push_back(std::move(sm));
             ++smIndex;
@@ -674,6 +681,10 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
         sm.mesh = mesh;
         sm.local = nodeTransform;
         sm.material = loadMaterialFromIndex(prim.material);
+        sm.localBounds.reset();
+        for (const auto& p : positions)
+            sm.localBounds.expand(p);
+        model->bounds.include(transformAABB(sm.localBounds, sm.local));
         return sm;
     };
 

@@ -12,6 +12,8 @@
 #include <camera/orbitCamera.h>
 #include <utils/windowContext.h>
 
+class Scene;
+
 class Window
 {
 public:
@@ -20,6 +22,7 @@ public:
     std::unique_ptr<CameraController> cameraController = nullptr;
     WindowContext windowContext{};
     bool screenshotRequested = false;
+    Scene* scene = nullptr;
 
     explicit Window(GLFWwindow* window);
     virtual ~Window();

@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <glm/glm.hpp>
+#include <geometry/aabb.h>
 
 class Mesh;
 class Material;
@@ -21,10 +22,12 @@ struct Model
         std::shared_ptr<Mesh> mesh;
         glm::mat4 local{1.0f};
         std::shared_ptr<Material> material;
+        AABB localBounds;
     };
 
     std::string sourcePath;
     std::vector<Submesh> submeshes;
+    AABB bounds;
     bool hasMaterial() const
     {
         for (const auto& submesh : submeshes)
