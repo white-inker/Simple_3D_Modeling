@@ -46,6 +46,9 @@ Mesh &Mesh::operator=(Mesh &&other) noexcept
     indexCount = other.indexCount;
     other.indexCount = 0;
 
+    cpuVertices = std::move(other.cpuVertices);
+    cpuIndices = std::move(other.cpuIndices);
+
     return *this;
 }
 
@@ -71,8 +74,11 @@ void Mesh::destroy()
 void Mesh::createOnGPU(const std::vector<Vertex> &vertices,
                        const std::vector<std::uint32_t> *indices)
 {
-    vertexCount = static_cast<GLsizei>(vertices.size());
-    indexCount = indices ? static_cast<GLsizei>(indices->size()) : 0;
+    cpuVertices = vertices;
+    cpuIndices = indices ? *indices : std::vector<std::uint32_t>{};
+
+    vertexCount = static_cast<GLsizei>(cpuVertices.size());
+    indexCount = static_cast<GLsizei>(cpuIndices.size());
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -81,17 +87,17 @@ void Mesh::createOnGPU(const std::vector<Vertex> &vertices,
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER,
-                 static_cast<GLsizeiptr>(vertices.size() * sizeof(Vertex)),
-                 vertices.data(),
+                 static_cast<GLsizeiptr>(cpuVertices.size() * sizeof(Vertex)),
+                 cpuVertices.data(),
                  GL_STATIC_DRAW);
 
-    if (indices && !indices->empty())
+    if (!cpuIndices.empty())
     {
         glGenBuffers(1, &ebo);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                     static_cast<GLsizeiptr>(indices->size() * sizeof(std::uint32_t)),
-                     indices->data(),
+                     static_cast<GLsizeiptr>(cpuIndices.size() * sizeof(std::uint32_t)),
+                     cpuIndices.data(),
                      GL_STATIC_DRAW);
     }
 
