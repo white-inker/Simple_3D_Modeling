@@ -22,7 +22,7 @@
 
       "frame":
       {
-        "clearColor": [0.0, 0.0, 0.0, 1.0],
+        "clearColor": [0.1,0.1,0.1, 1.0],
         "clearColorBuffer": true,
         "clearDepthBuffer": true,
         "enableDepthTest": true,

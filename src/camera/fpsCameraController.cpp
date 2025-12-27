@@ -8,95 +8,107 @@
 #include <geometry/aabb.h>
 #include <scene/scene.h>
 #include <scene/entity.h>
-#include <limits>
 
-namespace
+glm::vec3 resolveCollision(const glm::vec3& desiredPos,
+                           const glm::vec3& currentPos,
+                           const Scene* scene,
+                           float radius,
+                           float offset)
 {
-    glm::vec3 resolveCollision(const glm::vec3& desiredPos,
-                               const glm::vec3& currentPos,
-                               const Scene* scene,
-                               float radius,
-                               float offset)
+    if (!scene || radius <= 0.0f)
+        return desiredPos;
+
+    glm::vec3 correctedPos = desiredPos;
+
+    for (const auto& entityPtr : scene->getEntities())
     {
-        if (!scene || radius <= 0.0f)
-            return desiredPos;
+        if (!entityPtr) continue;
 
-        glm::vec3 correctedPos = desiredPos;
+        if (!entityPtr->isRenderable()) continue;
 
-        for (const auto& entityPtr : scene->getEntities())
+        const auto& model = entityPtr->getModel();
+        if (!model) continue;
+
+        const glm::mat4 entityModel = entityPtr->getTransform().modelMatrix();
+
+        for (const auto& sm : model->submeshes)
         {
-            if (!entityPtr || !entityPtr->isRenderable()) continue;
-            const auto& model = entityPtr->getModel();
-            if (!model) continue;
-            const auto modelMat = entityPtr->getTransform().modelMatrix();
-            const auto worldAABB = transformAABB(model->bounds, modelMat);
+            if (!sm.localBounds.valid) continue;
+
+            const glm::mat4 worldMat = entityModel * sm.local;
+
+            const AABB worldAABB = transformAABB(sm.localBounds, worldMat);
             if (!worldAABB.valid) continue;
 
-            // only check when within range to reduce cost
             if (distancePointAABB(worldAABB, currentPos) > radius * 4.0f)
                 continue;
 
-            if (sphereIntersectsAABB(worldAABB, correctedPos, radius))
-            {
-                // push out along minimal axis
-                const glm::vec3 p = glm::clamp(correctedPos, worldAABB.min, worldAABB.max);
-                const glm::vec3 delta = correctedPos - p;
-                const float dist = glm::length(delta);
-                if (dist < 1e-5f)
-                {
-                    // inside AABB center: push along closest face normal
-                    float distances[6] = {
-                        correctedPos.x - worldAABB.min.x,
-                        worldAABB.max.x - correctedPos.x,
-                        correctedPos.y - worldAABB.min.y,
-                        worldAABB.max.y - correctedPos.y,
-                        correctedPos.z - worldAABB.min.z,
-                        worldAABB.max.z - correctedPos.z
-                    };
-                    float minDist = distances[0];
-                    int axisIndex = 0;
-                    for (int i = 1; i < 6; ++i)
-                    {
-                        if (distances[i] < minDist)
-                        {
-                            minDist = distances[i];
-                            axisIndex = i;
-                        }
-                    }
+            if (!sphereIntersectsAABB(worldAABB, correctedPos, radius))
+                continue;
 
-                    const float push = radius + offset;
-                    switch (axisIndex)
+            // push out along minimal axis / direction
+            const glm::vec3 p = glm::clamp(correctedPos, worldAABB.min, worldAABB.max);
+            const glm::vec3 delta = correctedPos - p;
+            const float dist = glm::length(delta);
+
+            if (dist < 1e-5f)
+            {
+                float distances[6] = {
+                    correctedPos.x - worldAABB.min.x, // to left face
+                    worldAABB.max.x - correctedPos.x, // to right face
+                    correctedPos.y - worldAABB.min.y, // to bottom
+                    worldAABB.max.y - correctedPos.y, // to top
+                    correctedPos.z - worldAABB.min.z, // to back
+                    worldAABB.max.z - correctedPos.z  // to front
+                };
+
+                float minDist = distances[0];
+                int axisIndex = 0;
+                for (int i = 1; i < 6; ++i)
+                {
+                    if (distances[i] < minDist)
                     {
-                        case 0: correctedPos.x = worldAABB.min.x - push; break; // left
-                        case 1: correctedPos.x = worldAABB.max.x + push; break; // right
-                        case 2: correctedPos.y = worldAABB.min.y - push; break; // bottom
-                        case 3: correctedPos.y = worldAABB.max.y + push; break; // top
-                        case 4: correctedPos.z = worldAABB.min.z - push; break; // back
-                        case 5: correctedPos.z = worldAABB.max.z + push; break; // front
-                        default: break;
+                        minDist = distances[i];
+                        axisIndex = i;
                     }
                 }
-                else
+
+                const float push = radius + offset;
+
+                switch (axisIndex)
                 {
-                    glm::vec3 dir = delta / dist;
-                    correctedPos = p + dir * (radius + offset);
+                    case 0: correctedPos.x = worldAABB.min.x - push; break; // left
+                    case 1: correctedPos.x = worldAABB.max.x + push; break; // right
+                    case 2: correctedPos.y = worldAABB.min.y - push; break; // bottom
+                    case 3: correctedPos.y = worldAABB.max.y + push; break; // top
+                    case 4: correctedPos.z = worldAABB.min.z - push; break; // back
+                    case 5: correctedPos.z = worldAABB.max.z + push; break; // front
+                    default: break;
                 }
             }
+            else
+            {
+                glm::vec3 dir = delta / dist;
+                correctedPos = p + dir * (radius + offset);
+            }
         }
-
-        return correctedPos;
     }
+
+    return correctedPos;
 }
 
-void FpsCameraController::update(const InputContext& input, float dt, void* ptr)
+void FpsCameraController::update(const InputContext &input, float dt, void *ptr)
 {
     float speed = moveSpeed;
     if (input.IsKeyDown(GLFW_KEY_LEFT_SHIFT))
         speed *= fastMultiplier;
     if (input.IsKeyDown(GLFW_KEY_ESCAPE))
     {
-        const auto win = static_cast<Window*>(ptr);
-        glfwSetWindowShouldClose(win->window, true);
+        if (ptr)
+        {
+            const auto win = static_cast<Window *>(ptr);
+            glfwSetWindowShouldClose(win->window, true);
+        }
     }
 
     // 移动（WASD + QE）
@@ -110,13 +122,13 @@ void FpsCameraController::update(const InputContext& input, float dt, void* ptr)
     if (input.IsKeyDown(GLFW_KEY_S)) desiredPos -= fwd * (speed * dt);
     if (input.IsKeyDown(GLFW_KEY_D)) desiredPos += right * (speed * dt);
     if (input.IsKeyDown(GLFW_KEY_A)) desiredPos -= right * (speed * dt);
-    if (input.IsKeyDown(GLFW_KEY_E)) desiredPos += glm::vec3(0,1,0) * (speed * dt);
-    if (input.IsKeyDown(GLFW_KEY_Q)) desiredPos += glm::vec3(0,-1,0) * (speed * dt);
+    if (input.IsKeyDown(GLFW_KEY_E)) desiredPos += glm::vec3(0, 1, 0) * (speed * dt);
+    if (input.IsKeyDown(GLFW_KEY_Q)) desiredPos += glm::vec3(0, -1, 0) * (speed * dt);
 
     if (enableCollision)
     {
-        const auto win = static_cast<Window*>(ptr);
-        const Scene* scene = win ? win->scene : nullptr;
+        const auto win = static_cast<Window *>(ptr);
+        const Scene *scene = win ? win->scene : nullptr;
         desiredPos = resolveCollision(desiredPos, curPos, scene, collisionRadius, collisionOffset);
     }
 
@@ -144,8 +156,7 @@ void FpsCameraController::update(const InputContext& input, float dt, void* ptr)
         const float newFov = cur + (targetFovDeg - cur) * alpha;
 
         m_cam.setPerspective(newFov, m_cam.getNear(), m_cam.getFar());
-    }
-    else
+    } else
     {
         m_cam.setPerspective(targetFovDeg, m_cam.getNear(), m_cam.getFar());
     }

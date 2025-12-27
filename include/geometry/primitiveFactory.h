@@ -8,6 +8,8 @@
 #include <memory>
 #include <glm/glm.hpp>
 
+#include "graphics/mesh.h"
+
 class Mesh;
 struct Model;
 
@@ -51,7 +53,7 @@ class PrimitiveFactory
 public:
     static std::shared_ptr<Model> CreateModel(const PrimitiveDesc& d);
 
-    static std::shared_ptr<Mesh> CreateMesh(const PrimitiveDesc& d);
+    static std::shared_ptr<Mesh> CreateMesh(const PrimitiveDesc& d, std::vector<Mesh::Vertex>& V);
 
 private:
     PrimitiveFactory() = default;

@@ -1,4 +1,3 @@
-
 #include <assets/assetManager.h>
 
 #include <filesystem>
@@ -24,33 +23,33 @@ AssetManager::AssetManager(std::string assetRootDir)
 {
 }
 
-void AssetManager::setRootDir(const std::string& root) { m_root = root; }
-const std::string& AssetManager::rootDir() const { return m_root; }
+void AssetManager::setRootDir(const std::string &root) { m_root = root; }
+const std::string &AssetManager::rootDir() const { return m_root; }
 
-std::string AssetManager::makeAbsPath(const std::string& relativePath) const
+std::string AssetManager::makeAbsPath(const std::string &relativePath) const
 {
     const std::filesystem::path p = std::filesystem::path(m_root) / relativePath;
     return p.lexically_normal().string();
 }
 
-std::string AssetManager::makeTextureKey(const std::string& absPath, const TextureParams& params)
+std::string AssetManager::makeTextureKey(const std::string &absPath, const TextureParams &params)
 {
     std::ostringstream ss;
     ss << absPath
-       << "|cs=" << (params.colorSpace == ColorSpace::SRGB ? 1 : 0)
-       << "|flip=" << (params.flipY ? 1 : 0)
-       << "|mip=" << (params.generateMipmaps ? 1 : 0)
-       << "|wrapS=" << params.wrapS
-       << "|wrapT=" << params.wrapT
-       << "|min=" << params.minFilter
-       << "|mag=" << params.magFilter
-       << "|aniso=" << params.anisotropy;
+            << "|cs=" << (params.colorSpace == ColorSpace::SRGB ? 1 : 0)
+            << "|flip=" << (params.flipY ? 1 : 0)
+            << "|mip=" << (params.generateMipmaps ? 1 : 0)
+            << "|wrapS=" << params.wrapS
+            << "|wrapT=" << params.wrapT
+            << "|min=" << params.minFilter
+            << "|mag=" << params.magFilter
+            << "|aniso=" << params.anisotropy;
     if (params.forceChannels.has_value()) ss << "|ch=" << *params.forceChannels;
     return ss.str();
 }
 
-std::shared_ptr<Texture2D> AssetManager::loadTexture2D(const std::string& relativePath,
-                                                       const TextureParams& params,
+std::shared_ptr<Texture2D> AssetManager::loadTexture2D(const std::string &relativePath,
+                                                       const TextureParams &params,
                                                        bool forceReload)
 {
     const std::string abs = makeAbsPath(relativePath);
@@ -82,41 +81,46 @@ struct IndexKey
     int vt = -1;
     int vn = -1;
 
-    bool operator==(const IndexKey& o) const { return v==o.v && vt==o.vt && vn==o.vn; }
+    bool operator==(const IndexKey &o) const { return v == o.v && vt == o.vt && vn == o.vn; }
 };
 
 struct IndexKeyHash
 {
-    std::size_t operator()(const IndexKey& k) const noexcept
+    std::size_t operator()(const IndexKey &k) const noexcept
     {
         // hash combine
         std::size_t h = 1469598103934665603ull;
-        auto mix = [&](int x){
+        auto mix = [&](int x)
+        {
             h ^= static_cast<std::size_t>(x + 0x9e3779b9);
             h *= 1099511628211ull;
         };
-        mix(k.v); mix(k.vt); mix(k.vn);
+        mix(k.v);
+        mix(k.vt);
+        mix(k.vn);
         return h;
     }
 };
 
-static glm::vec3 fetchVec3(const std::vector<float>& a, int idx)
+static glm::vec3 fetchVec3(const std::vector<float> &a, int idx)
 {
-    return {a[3*idx + 0], a[3*idx + 1], a[3*idx + 2]};
+    return {a[3 * idx + 0], a[3 * idx + 1], a[3 * idx + 2]};
 }
-static glm::vec2 fetchVec2(const std::vector<float>& a, int idx)
+
+static glm::vec2 fetchVec2(const std::vector<float> &a, int idx)
 {
-    return {a[2*idx + 0], a[2*idx + 1]};
+    return {a[2 * idx + 0], a[2 * idx + 1]};
 }
-static glm::vec3 computeFaceNormal(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2)
+
+static glm::vec3 computeFaceNormal(const glm::vec3 &p0, const glm::vec3 &p1, const glm::vec3 &p2)
 {
     glm::vec3 n = glm::cross(p1 - p0, p2 - p0);
     float len = glm::length(n);
-    if (len < 1e-8f) return {0,1,0};
+    if (len < 1e-8f) return {0, 1, 0};
     return n / len;
 }
 
-std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePath, bool forceReload)
+std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string &relativePath, bool forceReload)
 {
     const std::string abs = makeAbsPath(relativePath);
 
@@ -140,24 +144,24 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
     tinyobj::ObjReader reader;
     if (!reader.ParseFromFile(abs, cfg))
     {
-        LOG(ERROR) << "[AssetManager][OBJ] load failed: " << abs ;
-        if (!reader.Error().empty()) LOG(ERROR) << reader.Error();
+        LOG(ERROR) << "[AssetManager][OBJ] load failed: " << abs;
+        if (!reader.Error().empty())
+            LOG(ERROR) << reader.Error();
         return nullptr;
     }
     if (!reader.Warning().empty())
-        LOG(ERROR) << "[AssetManager][OBJ] warning: " << reader.Warning() ;
+        LOG(ERROR) << "[AssetManager][OBJ] warning: " << reader.Warning();
 
-    const auto& attrib = reader.GetAttrib();
-    const auto& shapes = reader.GetShapes();
+    const auto &attrib = reader.GetAttrib();
+    const auto &shapes = reader.GetShapes();
     // const auto& materials = reader.GetMaterials(); // 解析 mtl
 
     auto model = std::make_shared<Model>();
     model->sourcePath = abs;
     model->bounds.reset();
-    model->bounds.reset();
 
     // 每个 shape 可能包含多个 material id，我们按 material 分 submesh
-    for (const auto& shape : shapes)
+    for (const auto &shape: shapes)
     {
         // material_id -> builder
         struct Builder
@@ -171,16 +175,16 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
         builders.reserve(8);
 
         size_t indexOffset = 0;
-        const auto& faceVertCounts = shape.mesh.num_face_vertices;
-        const auto& matIds = shape.mesh.material_ids;
-        const auto& idxs = shape.mesh.indices;
+        const auto &faceVertCounts = shape.mesh.num_face_vertices;
+        const auto &matIds = shape.mesh.material_ids;
+        const auto &idxs = shape.mesh.indices;
 
         for (size_t f = 0; f < faceVertCounts.size(); ++f)
         {
-            const int fv = faceVertCounts[f];  // triangulate 后 fv 应为 3
+            const int fv = faceVertCounts[f]; // triangulate 后 fv 应为 3
             const int matId = (f < matIds.size() ? matIds[f] : -1);
 
-            Builder& b = builders[matId];
+            Builder &b = builders[matId];
 
             // 取这个 face 的三个点，用于计算缺失法线
             glm::vec3 p[3]{};
@@ -188,18 +192,22 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
 
             for (int v = 0; v < fv; ++v)
             {
-                const tinyobj::index_t& id = idxs[indexOffset + v];
-                if (id.vertex_index < 0) { hasAllPos = false; continue; }
+                const tinyobj::index_t &id = idxs[indexOffset + v];
+                if (id.vertex_index < 0)
+                {
+                    hasAllPos = false;
+                    continue;
+                }
                 p[v] = fetchVec3(attrib.vertices, id.vertex_index);
             }
 
-            glm::vec3 faceN = (fv >= 3 && hasAllPos) ? computeFaceNormal(p[0], p[1], p[2]) : glm::vec3(0,1,0);
+            glm::vec3 faceN = (fv >= 3 && hasAllPos) ? computeFaceNormal(p[0], p[1], p[2]) : glm::vec3(0, 1, 0);
 
             for (int v = 0; v < fv; ++v)
             {
-                const tinyobj::index_t& id = idxs[indexOffset + v];
+                const tinyobj::index_t &id = idxs[indexOffset + v];
 
-                IndexKey key{ id.vertex_index, id.texcoord_index, id.normal_index };
+                IndexKey key{id.vertex_index, id.texcoord_index, id.normal_index};
 
                 auto it = b.dedup.find(key);
                 if (it != b.dedup.end())
@@ -238,19 +246,21 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
 
         // builders -> submeshes
         int smIndex = 0;
-        for (auto& [matId, b] : builders)
+        for (auto &[matId, b]: builders)
         {
             if (b.verts.empty()) continue;
 
             auto mesh = std::make_shared<Mesh>(b.verts, b.indices);
 
             Model::Submesh sm;
-            sm.name = shape.name.empty() ? ("submesh_" + std::to_string(smIndex)) : (shape.name + "_" + std::to_string(smIndex));
+            sm.name = shape.name.empty()
+                          ? ("submesh_" + std::to_string(smIndex))
+                          : (shape.name + "_" + std::to_string(smIndex));
             sm.mesh = mesh;
             sm.material = nullptr;
             sm.local = glm::mat4(1.0f);
             sm.localBounds.reset();
-            for (const auto& v : b.verts)
+            for (const auto &v: b.verts)
                 sm.localBounds.expand(v.position);
             model->bounds.include(transformAABB(sm.localBounds, sm.local));
 
@@ -265,7 +275,7 @@ std::shared_ptr<Model> AssetManager::loadModelOBJ(const std::string& relativePat
 
 // ---------------- GLB loading with tinygltf ----------------
 
-static glm::mat4 composeNodeTransform(const tinygltf::Node& node)
+static glm::mat4 composeNodeTransform(const tinygltf::Node &node)
 {
     if (node.matrix.size() == 16)
     {
@@ -302,7 +312,7 @@ static glm::mat4 composeNodeTransform(const tinygltf::Node& node)
     return T * R * S;
 }
 
-static size_t accessorStride(const tinygltf::Accessor& accessor, const tinygltf::BufferView& view)
+static size_t accessorStride(const tinygltf::Accessor &accessor, const tinygltf::BufferView &view)
 {
     size_t stride = accessor.ByteStride(view);
     if (stride == 0)
@@ -311,88 +321,91 @@ static size_t accessorStride(const tinygltf::Accessor& accessor, const tinygltf:
     return stride;
 }
 
-static bool readAccessorVec3(const tinygltf::Model& model,
+static bool readAccessorVec3(const tinygltf::Model &model,
                              int accessorIndex,
-                             std::vector<glm::vec3>& out)
+                             std::vector<glm::vec3> &out)
 {
     if (accessorIndex < 0 || accessorIndex >= static_cast<int>(model.accessors.size()))
         return false;
-    const auto& accessor = model.accessors[accessorIndex];
+    const auto &accessor = model.accessors[accessorIndex];
     if (accessor.type != TINYGLTF_TYPE_VEC3 || accessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT)
         return false;
     if (accessor.bufferView < 0) return false;
 
-    const auto& view = model.bufferViews[accessor.bufferView];
-    const auto& buffer = model.buffers[view.buffer];
+    const auto &view = model.bufferViews[accessor.bufferView];
+    const auto &buffer = model.buffers[view.buffer];
 
     const size_t stride = accessorStride(accessor, view);
-    const unsigned char* dataPtr = buffer.data.data() + view.byteOffset + accessor.byteOffset;
+    const unsigned char *dataPtr = buffer.data.data() + view.byteOffset + accessor.byteOffset;
 
     out.resize(accessor.count);
     for (size_t i = 0; i < accessor.count; ++i)
     {
-        const float* f = reinterpret_cast<const float*>(dataPtr + i * stride);
-        out[i] = { f[0], f[1], f[2] };
+        const float *f = reinterpret_cast<const float *>(dataPtr + i * stride);
+        out[i] = {f[0], f[1], f[2]};
     }
     return true;
 }
 
-static bool readAccessorVec2(const tinygltf::Model& model,
+static bool readAccessorVec2(const tinygltf::Model &model,
                              int accessorIndex,
-                             std::vector<glm::vec2>& out)
+                             std::vector<glm::vec2> &out)
 {
     if (accessorIndex < 0 || accessorIndex >= static_cast<int>(model.accessors.size()))
         return false;
-    const auto& accessor = model.accessors[accessorIndex];
+    const auto &accessor = model.accessors[accessorIndex];
     if (accessor.type != TINYGLTF_TYPE_VEC2 || accessor.componentType != TINYGLTF_COMPONENT_TYPE_FLOAT)
         return false;
     if (accessor.bufferView < 0) return false;
 
-    const auto& view = model.bufferViews[accessor.bufferView];
-    const auto& buffer = model.buffers[view.buffer];
+    const auto &view = model.bufferViews[accessor.bufferView];
+    const auto &buffer = model.buffers[view.buffer];
 
     const size_t stride = accessorStride(accessor, view);
-    const unsigned char* dataPtr = buffer.data.data() + view.byteOffset + accessor.byteOffset;
+    const unsigned char *dataPtr = buffer.data.data() + view.byteOffset + accessor.byteOffset;
 
     out.resize(accessor.count);
     for (size_t i = 0; i < accessor.count; ++i)
     {
-        const float* f = reinterpret_cast<const float*>(dataPtr + i * stride);
-        out[i] = { f[0], f[1] };
+        const float *f = reinterpret_cast<const float *>(dataPtr + i * stride);
+        out[i] = {f[0], f[1]};
     }
     return true;
 }
 
-static bool readIndices(const tinygltf::Model& model,
+static bool readIndices(const tinygltf::Model &model,
                         int accessorIndex,
-                        std::vector<std::uint32_t>& out)
+                        std::vector<std::uint32_t> &out)
 {
     if (accessorIndex < 0)
         return false;
     if (accessorIndex >= static_cast<int>(model.accessors.size()))
         return false;
 
-    const auto& accessor = model.accessors[accessorIndex];
+    const auto &accessor = model.accessors[accessorIndex];
     if (accessor.bufferView < 0) return false;
 
-    const auto& view = model.bufferViews[accessor.bufferView];
-    const auto& buffer = model.buffers[view.buffer];
+    const auto &view = model.bufferViews[accessor.bufferView];
+    const auto &buffer = model.buffers[view.buffer];
 
     const size_t stride = accessorStride(accessor, view);
-    const unsigned char* dataPtr = buffer.data.data() + view.byteOffset + accessor.byteOffset;
+    const unsigned char *dataPtr = buffer.data.data() + view.byteOffset + accessor.byteOffset;
 
     out.resize(accessor.count);
     for (size_t i = 0; i < accessor.count; ++i)
     {
-        const unsigned char* p = dataPtr + i * stride;
+        const unsigned char *p = dataPtr + i * stride;
         switch (accessor.componentType)
         {
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-                out[i] = *reinterpret_cast<const std::uint32_t*>(p); break;
+                out[i] = *reinterpret_cast<const std::uint32_t *>(p);
+                break;
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-                out[i] = *reinterpret_cast<const std::uint16_t*>(p); break;
+                out[i] = *reinterpret_cast<const std::uint16_t *>(p);
+                break;
             case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-                out[i] = *reinterpret_cast<const std::uint8_t*>(p); break;
+                out[i] = *reinterpret_cast<const std::uint8_t *>(p);
+                break;
             default:
                 return false;
         }
@@ -400,16 +413,16 @@ static bool readIndices(const tinygltf::Model& model,
     return true;
 }
 
-static void computeMissingNormals(const std::vector<glm::vec3>& positions,
-                                  const std::vector<std::uint32_t>& indices,
-                                  std::vector<glm::vec3>& normals)
+static void computeMissingNormals(const std::vector<glm::vec3> &positions,
+                                  const std::vector<std::uint32_t> &indices,
+                                  std::vector<glm::vec3> &normals)
 {
     normals.assign(positions.size(), glm::vec3(0.0f));
     if (positions.empty()) return;
 
     if (indices.empty())
     {
-        for (auto& n : normals) n = glm::vec3(0, 1, 0);
+        for (auto &n: normals) n = glm::vec3(0, 1, 0);
         return;
     }
 
@@ -427,14 +440,14 @@ static void computeMissingNormals(const std::vector<glm::vec3>& positions,
         normals[i2] += n;
     }
 
-    for (auto& n : normals)
+    for (auto &n: normals)
     {
         float len = glm::length(n);
         n = (len > 1e-6f) ? (n / len) : glm::vec3(0, 1, 0);
     }
 }
 
-std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativePath, bool forceReload)
+std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string &relativePath, bool forceReload)
 {
     const std::string abs = makeAbsPath(relativePath);
 
@@ -460,12 +473,10 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
     if (ext == ".glb" || ext == ".GLB")
     {
         ok = loader.LoadBinaryFromFile(&gltf, &err, &warn, abs);
-    }
-    else if (ext == ".gltf" || ext == ".GLTF")
+    } else if (ext == ".gltf" || ext == ".GLTF")
     {
         ok = loader.LoadASCIIFromFile(&gltf, &err, &warn, abs);
-    }
-    else
+    } else
     {
         LOG(ERROR) << "[AssetManager][glTF] Unsupported extension: " << ext;
         return nullptr;
@@ -476,38 +487,41 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
     if (!ok)
     {
         LOG(ERROR) << "[AssetManager][GLB] load failed: " << abs;
-        if (!err.empty()) LOG(ERROR) << err;
+        if (!err.empty())
+            LOG(ERROR) << err;
         return nullptr;
     }
 
     auto model = std::make_shared<Model>();
+    model->bounds.reset();
     model->sourcePath = abs;
 
     auto defaultPbrShader = loadShader("shaders/pbr/pbr.vert", "shaders/pbr/pbr.frag");
     if (!defaultPbrShader)
         LOG(ERROR) << "[AssetManager][GLB] Default PBR shader missing, materials will be invalid";
 
-    std::vector<std::shared_ptr<Texture2D>> textureCache(gltf.textures.size());
-    std::vector<std::shared_ptr<Material>> materialCache(gltf.materials.size());
+    std::vector<std::shared_ptr<Texture2D> > textureCache(gltf.textures.size());
+    std::vector<std::shared_ptr<Material> > materialCache(gltf.materials.size());
 
-    auto makeTextureParams = [&](int samplerIndex, ColorSpace cs) {
+    auto makeTextureParams = [&](int samplerIndex, ColorSpace cs)
+    {
         TextureParams params;
         params.colorSpace = cs;
         params.flipY = false;
 
         if (samplerIndex >= 0 && samplerIndex < static_cast<int>(gltf.samplers.size()))
         {
-            const auto& s = gltf.samplers[samplerIndex];
+            const auto &s = gltf.samplers[samplerIndex];
             if (s.wrapS >= 0) params.wrapS = s.wrapS;
             if (s.wrapT >= 0) params.wrapT = s.wrapT;
             if (s.minFilter >= 0)
             {
                 params.minFilter = s.minFilter;
                 params.generateMipmaps =
-                    (s.minFilter == GL_NEAREST_MIPMAP_NEAREST ||
-                     s.minFilter == GL_NEAREST_MIPMAP_LINEAR ||
-                     s.minFilter == GL_LINEAR_MIPMAP_NEAREST ||
-                     s.minFilter == GL_LINEAR_MIPMAP_LINEAR);
+                (s.minFilter == GL_NEAREST_MIPMAP_NEAREST ||
+                 s.minFilter == GL_NEAREST_MIPMAP_LINEAR ||
+                 s.minFilter == GL_LINEAR_MIPMAP_NEAREST ||
+                 s.minFilter == GL_LINEAR_MIPMAP_LINEAR);
             }
             if (s.magFilter >= 0) params.magFilter = s.magFilter;
         }
@@ -521,12 +535,12 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
 
         if (textureCache[texIndex]) return textureCache[texIndex];
 
-        const auto& tex = gltf.textures[texIndex];
+        const auto &tex = gltf.textures[texIndex];
         const int imageIndex = tex.source;
         if (imageIndex < 0 || imageIndex >= static_cast<int>(gltf.images.size()))
             return nullptr;
 
-        const auto& image = gltf.images[imageIndex];
+        const auto &image = gltf.images[imageIndex];
         TextureParams params = makeTextureParams(tex.sampler, cs);
 
         std::filesystem::path pseudoPath = std::filesystem::path(abs) /
@@ -555,8 +569,7 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
                                           image.height,
                                           image.component,
                                           params);
-        }
-        else if (!image.uri.empty())
+        } else if (!image.uri.empty())
         {
             const std::filesystem::path base = std::filesystem::path(abs).parent_path();
             const std::string imgAbs = (base / image.uri).lexically_normal().string();
@@ -580,11 +593,11 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
             return nullptr;
         if (materialCache[matIndex]) return materialCache[matIndex];
 
-        const auto& gm = gltf.materials[matIndex];
+        const auto &gm = gltf.materials[matIndex];
         auto mat = std::make_shared<Material>();
         mat->shader = defaultPbrShader;
 
-        const auto& pbr = gm.pbrMetallicRoughness;
+        const auto &pbr = gm.pbrMetallicRoughness;
         if (pbr.baseColorFactor.size() == 4)
         {
             mat->baseColorFactor = glm::vec4(pbr.baseColorFactor[0],
@@ -619,9 +632,9 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
         return mat;
     };
 
-    auto processPrimitive = [&](const tinygltf::Primitive& prim,
-                                const glm::mat4& nodeTransform,
-                                const std::string& name) -> std::optional<Model::Submesh>
+    auto processPrimitive = [&](const tinygltf::Primitive &prim,
+                                const glm::mat4 &nodeTransform,
+                                const std::string &name) -> std::optional<Model::Submesh>
     {
         if (prim.mode != TINYGLTF_MODE_TRIANGLES)
         {
@@ -670,8 +683,8 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
         {
             Mesh::Vertex v;
             v.position = positions[i];
-            v.normal   = (i < normals.size()) ? normals[i] : glm::vec3(0, 1, 0);
-            v.uv       = (hasUV && i < uvs.size()) ? uvs[i] : glm::vec2(0.0f);
+            v.normal = (i < normals.size()) ? normals[i] : glm::vec3(0, 1, 0);
+            v.uv = (hasUV && i < uvs.size()) ? uvs[i] : glm::vec2(0.0f);
             verts.push_back(v);
         }
 
@@ -682,23 +695,24 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
         sm.local = nodeTransform;
         sm.material = loadMaterialFromIndex(prim.material);
         sm.localBounds.reset();
-        for (const auto& p : positions)
+        for (const auto &p: positions)
             sm.localBounds.expand(p);
         model->bounds.include(transformAABB(sm.localBounds, sm.local));
         return sm;
     };
 
-    auto processNode = [&](auto&& self, int nodeIndex, const glm::mat4& parentMat) -> void
+
+    auto processNode = [&](auto &&self, int nodeIndex, const glm::mat4 &parentMat) -> void
     {
         if (nodeIndex < 0 || nodeIndex >= static_cast<int>(gltf.nodes.size()))
             return;
-        const auto& node = gltf.nodes[nodeIndex];
+        const auto &node = gltf.nodes[nodeIndex];
 
         glm::mat4 nodeMat = parentMat * composeNodeTransform(node);
 
         if (node.mesh >= 0 && node.mesh < static_cast<int>(gltf.meshes.size()))
         {
-            const auto& mesh = gltf.meshes[node.mesh];
+            const auto &mesh = gltf.meshes[node.mesh];
             for (size_t p = 0; p < mesh.primitives.size(); ++p)
             {
                 auto sm = processPrimitive(mesh.primitives[p], nodeMat,
@@ -708,13 +722,13 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
             }
         }
 
-        for (int child : node.children)
+        for (int child: node.children)
             self(self, child, nodeMat);
     };
 
     int sceneIndex = (gltf.defaultScene >= 0 && gltf.defaultScene < static_cast<int>(gltf.scenes.size()))
-                     ? gltf.defaultScene
-                     : (!gltf.scenes.empty() ? 0 : -1);
+                         ? gltf.defaultScene
+                         : (!gltf.scenes.empty() ? 0 : -1);
 
     if (sceneIndex < 0)
     {
@@ -722,8 +736,8 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
         return nullptr;
     }
 
-    const auto& scene = gltf.scenes[sceneIndex];
-    for (int node : scene.nodes)
+    const auto &scene = gltf.scenes[sceneIndex];
+    for (int node: scene.nodes)
         processNode(processNode, node, glm::mat4(1.0f));
 
     m_modelCache[abs] = model;
@@ -731,14 +745,14 @@ std::shared_ptr<Model> AssetManager::loadModelGLTF2(const std::string& relativeP
 }
 
 
-std::shared_ptr<Shader> AssetManager::loadShader(const std::string& vertRelPath,
-                                                 const std::string& fragRelPath,
-                                                 const std::vector<std::string>& defines,
+std::shared_ptr<Shader> AssetManager::loadShader(const std::string &vertRelPath,
+                                                 const std::string &fragRelPath,
+                                                 const std::vector<std::string> &defines,
                                                  bool forceReload)
 {
     const std::string vAbs = makeAbsPath(vertRelPath);
     const std::string fAbs = makeAbsPath(fragRelPath);
-    const std::string key  = makeShaderKey(vAbs, fAbs, defines);
+    const std::string key = makeShaderKey(vAbs, fAbs, defines);
 
     if (!forceReload)
     {
@@ -761,22 +775,21 @@ std::shared_ptr<Shader> AssetManager::loadShader(const std::string& vertRelPath,
 
 void AssetManager::purgeUnused()
 {
-    for (auto it = m_textureCache.begin(); it != m_textureCache.end(); )
+    for (auto it = m_textureCache.begin(); it != m_textureCache.end();)
         it = it->second.expired() ? m_textureCache.erase(it) : std::next(it);
 
-    for (auto it = m_modelCache.begin(); it != m_modelCache.end(); )
+    for (auto it = m_modelCache.begin(); it != m_modelCache.end();)
         it = it->second.expired() ? m_modelCache.erase(it) : std::next(it);
 
-    for (auto it = m_shaderCache.begin(); it != m_shaderCache.end(); )
+    for (auto it = m_shaderCache.begin(); it != m_shaderCache.end();)
         it = it->second.expired() ? m_shaderCache.erase(it) : std::next(it);
-
 }
 
-std::string AssetManager::makeShaderKey(const std::string& vAbs,
-                                        const std::string& fAbs,
-                                        const std::vector<std::string>& defines)
+std::string AssetManager::makeShaderKey(const std::string &vAbs,
+                                        const std::string &fAbs,
+                                        const std::vector<std::string> &defines)
 {
     std::string key = vAbs + "|" + fAbs;
-    for (auto& d : defines) key += "|D:" + d;
+    for (auto &d: defines) key += "|D:" + d;
     return key;
 }

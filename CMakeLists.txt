@@ -111,8 +111,42 @@ target_link_libraries(test2 PRIVATE
         nlohmann_json::nlohmann_json
 )
 
+add_executable(test3
+        $<TARGET_OBJECTS:Simple3DCore>
+        tests/test3/test3.cpp
+        tests/test3/TestApplication.h
+)
+
+target_link_libraries(test3 PRIVATE
+        glad::glad
+        glfw
+        glm::glm
+        imgui::imgui
+        glog::glog
+        nlohmann_json::nlohmann_json
+)
+
+add_executable(test4
+        $<TARGET_OBJECTS:Simple3DCore>
+        tests/test4/test4.cpp
+        tests/test4/TestApplication.h
+)
+
+target_link_libraries(test4 PRIVATE
+        glad::glad
+        glfw
+        glm::glm
+        imgui::imgui
+        glog::glog
+        nlohmann_json::nlohmann_json
+)
 
 add_test(NAME test1 COMMAND test1)
 
 add_test(NAME test2 COMMAND test2)
+
+add_test(NAME test3 COMMAND test3)
+
+add_test(NAME test4 COMMAND test4)
+
 

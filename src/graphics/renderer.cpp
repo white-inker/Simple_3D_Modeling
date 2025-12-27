@@ -179,7 +179,7 @@ void Renderer::renderScene(const Scene& scene,
     shadowCtx.normalBias = shadowNormalBias;
 
     const DirectionalLight* dirLight = scene.getLighting().directional();
-    const bool hasDirectional = dirLight && dirLight->enabled && dirLight->intensity > 0.0f;
+    const bool hasDirectional = dirLight && dirLight->enabled && dirLight->enableShadow && dirLight->intensity > 0.0f;
 
     if (hasDirectional && !shadowCommands.empty())
     {

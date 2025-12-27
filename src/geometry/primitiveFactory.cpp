@@ -25,10 +25,10 @@ static void appendIndexed(
     const std::vector<Mesh::Vertex>& vAdd,
     const std::vector<std::uint32_t>& iAdd)
 {
-    const std::uint32_t base = static_cast<std::uint32_t>(V.size());
+    const auto base = static_cast<std::uint32_t>(V.size());
     V.insert(V.end(), vAdd.begin(), vAdd.end());
     I.reserve(I.size() + iAdd.size());
-    for (auto idx : iAdd) I.push_back(base + idx);
+    for (const auto idx : iAdd) I.push_back(base + idx);
 }
 
 // -------------------- Cube --------------------
@@ -59,10 +59,9 @@ static void buildCube(const PrimitiveDesc& d,
     outV.reserve(24);
     outI.reserve(36);
 
-    for (int f=0; f<6; ++f)
+    for (const auto & F : faces)
     {
-        const auto& F = faces[f];
-        const std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+        const auto base = static_cast<std::uint32_t>(outV.size());
 
         Mesh::Vertex v0{F.a, F.n, {0,0}};
         Mesh::Vertex v1{F.b, F.n, {1,0}};
@@ -146,7 +145,7 @@ static void appendDisk(float y, float radius, int sides, bool top,
 
     const glm::vec3 n = top ? glm::vec3(0,1,0) : glm::vec3(0,-1,0);
 
-    const std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+    const auto base = static_cast<std::uint32_t>(outV.size());
 
     // center
     outV.push_back({ {0,y,0}, n, {0.5f, 0.5f} });
@@ -252,7 +251,7 @@ static void buildCone(const PrimitiveDesc& d,
 
     // 为了 UV seam + 法线合理：每个 slice 有自己的 apex 顶点
     // 侧面：2*(sides+1) 顶点（base_i + apex_i）
-    const std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+    const auto base = static_cast<std::uint32_t>(outV.size());
     outV.reserve((sides+1)*2);
 
     // cone slope normal approx: normalize(vec3(x, r/h, z))
@@ -331,7 +330,7 @@ static void buildPrism(const PrimitiveDesc& d,
         // face normal (flat)
         glm::vec3 n = faceNormal(p00, p01, p10);
 
-        std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+        auto base = static_cast<std::uint32_t>(outV.size());
         outV.push_back({p00, n, {u0, 0.0f}});
         outV.push_back({p01, n, {u0, 1.0f}});
         outV.push_back({p11, n, {u1, 1.0f}});
@@ -430,7 +429,7 @@ static void buildFrustum(const PrimitiveDesc& d,
 
         glm::vec3 n = faceNormal(b0, t0, b1);
 
-        std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+        auto base = static_cast<std::uint32_t>(outV.size());
         outV.push_back({b0, n, {u0, 0.0f}});
         outV.push_back({t0, n, {u0, 1.0f}});
         outV.push_back({t1, n, {u1, 1.0f}});
@@ -446,7 +445,7 @@ static void buildFrustum(const PrimitiveDesc& d,
         if (rt > 0.00001f)
         {
             // top cap
-            std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+            auto base = static_cast<std::uint32_t>(outV.size());
             outV.push_back({{0,yTop,0},{0,1,0},{0.5f,0.5f}});
 
             std::vector<std::uint32_t> ring(sides);
@@ -472,7 +471,7 @@ static void buildFrustum(const PrimitiveDesc& d,
         if (rb > 0.00001f)
         {
             // bottom cap
-            std::uint32_t base = static_cast<std::uint32_t>(outV.size());
+            auto base = static_cast<std::uint32_t>(outV.size());
             outV.push_back({{0,yBot,0},{0,-1,0},{0.5f,0.5f}});
 
             std::vector<std::uint32_t> ring(sides);
@@ -499,9 +498,8 @@ static void buildFrustum(const PrimitiveDesc& d,
 
 // -------------------- Factory --------------------
 
-std::shared_ptr<Mesh> PrimitiveFactory::CreateMesh(const PrimitiveDesc& d)
+std::shared_ptr<Mesh> PrimitiveFactory::CreateMesh(const PrimitiveDesc& d, std::vector<Mesh::Vertex>& V)
 {
-    std::vector<Mesh::Vertex> V;
     std::vector<std::uint32_t> I;
 
     switch (d.type)
@@ -537,7 +535,8 @@ std::shared_ptr<Mesh> PrimitiveFactory::CreateMesh(const PrimitiveDesc& d)
 
 std::shared_ptr<Model> PrimitiveFactory::CreateModel(const PrimitiveDesc& d)
 {
-    const auto mesh = CreateMesh(d);
+    std::vector<Mesh::Vertex> V;
+    const auto mesh = CreateMesh(d, V);
     if (!mesh) return nullptr;
 
     auto model = std::make_shared<Model>();

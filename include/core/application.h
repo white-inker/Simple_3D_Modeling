@@ -36,11 +36,11 @@ protected:
     virtual void initLightFromConfig();
     virtual void initSceneEntity() {};
     virtual void initWindowInput(const WindowConfig& config, Window& win);
+    static void initWindowFPSCamera(const WindowConfig& config, Window& window);
+    static void initWindowOrbitCamera(const WindowConfig& config, Window& window);
 
 private:
     void createWindows();
-    static void initWindowFPSCamera(const WindowConfig& config, Window& window);
-    static void initWindowOrbitCamera(const WindowConfig& config, Window& window);
     [[nodiscard]] bool isRunning() const;
     void handleScreenshotRequest(const std::string& windowName, Window& win);
     [[nodiscard]] std::filesystem::path buildScreenshotPath(const std::string& windowName) const;

@@ -7,14 +7,17 @@
 
 #include <core/application.h>
 #include <geometry/primitiveFactory.h>
+#include <camera/fpsCameraController.h>
 
+#include "core/window.h"
 #include "scene/scene.h"
 
 class TestApplication final : public Application
 {
 public:
-    explicit TestApplication(const std::string name) : Application(name){}
+    explicit TestApplication(const std::string& name) : Application(name){}
     void initSceneEntity() override;
+    void initWindowCamera(const WindowConfig &config, Window &window) override;
 };
 
 inline void TestApplication::initSceneEntity()
@@ -87,9 +90,18 @@ inline void TestApplication::initSceneEntity()
     scene->getLighting().directional()->direction = {0.5, -1.0, -0.5};
     scene->getLighting().directional()->intensity = 2.0;
     scene->getLighting().directional()->color = {0.8, 0.8, 0.9};
+    scene->getLighting().directional()->enableShadow = true;
 
     scene->getLighting().pointLights()[0]->position = {-10.0, 2.0, 0.0};
     scene->getLighting().pointLights()[1]->enabled = false;
+}
+
+inline void TestApplication::initWindowCamera(const WindowConfig &config, Window &window)
+{
+    // 默认 FPS 相机
+    initWindowFPSCamera(config, window);
+    // 你可以在下面设置相机参数
+    dynamic_cast<FpsCameraController*>(window.cameraController.get())->enableCollision = true;
 }
 
 
