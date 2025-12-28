@@ -36,7 +36,7 @@ private:
 
 private:
     glm::vec3 m_target{0.0f, 0.0f, 0.0f};
-    float m_distance = 5.0f;
+    float m_distance = 10.0f;
 
     float m_yawDeg   = 90.0f; // degree
     float m_pitchDeg = 0.0f;

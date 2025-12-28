@@ -198,6 +198,7 @@ void Application::render()
 {
     for (auto& [name, win] : windows)
     {
+        if (!win || !win->window) continue;
         GLFWwindow* w = win->window;
         glfwMakeContextCurrent(w);
 

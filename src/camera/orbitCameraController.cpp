@@ -11,56 +11,62 @@
 #include <scene/entity.h>
 #include <scene/scene.h>
 
-namespace
+AABB computeSceneBounds(const Scene *scene)
 {
-    AABB computeSceneBounds(const Scene* scene)
+    AABB bounds;
+    bounds.reset();
+
+    if (!scene) return bounds;
+
+    for (const auto &entityPtr: scene->getEntities())
     {
-        AABB bounds;
-        bounds.reset();
+        if (!entityPtr || !entityPtr->isRenderable()) continue;
 
-        if (!scene) return bounds;
+        const auto &model = entityPtr->getModel();
+        if (!model) continue;
 
-        for (const auto& entityPtr : scene->getEntities())
+        const glm::mat4 entityTransform = entityPtr->getTransform().modelMatrix();
+        for (const auto &sm: model->submeshes)
         {
-            if (!entityPtr || !entityPtr->isRenderable()) continue;
-
-            const auto& model = entityPtr->getModel();
-            if (!model) continue;
-
-            const glm::mat4 entityTransform = entityPtr->getTransform().modelMatrix();
-            for (const auto& sm : model->submeshes)
-            {
-                if (!sm.localBounds.valid) continue;
-                const glm::mat4 worldMat = entityTransform * sm.local;
-                bounds.include(transformAABB(sm.localBounds, worldMat));
-            }
+            if (!sm.localBounds.valid) continue;
+            const glm::mat4 worldMat = entityTransform * sm.local;
+            bounds.include(transformAABB(sm.localBounds, worldMat));
         }
-
-        return bounds;
     }
 
-    float computeFitDistance(const OrbitCamera& cam, float radius)
-    {
-        const float safeRadius = std::max(radius, 0.001f);
-        const float aspect = std::max(cam.getAspect(), 0.01f);
-
-        const float fovY = glm::radians(cam.getFovYDegrees());
-        const float fovX = 2.0f * std::atan(std::tan(fovY * 0.5f) * aspect);
-
-        const float distanceY = safeRadius / std::tan(fovY * 0.5f);
-        const float distanceX = safeRadius / std::tan(fovX * 0.5f);
-
-        const float baseDistance = std::max(distanceX, distanceY);
-        return baseDistance + safeRadius * 0.2f; // small padding
-    }
+    return bounds;
 }
 
-void OrbitCameraController::update(const InputContext& input, float /*dt*/, void* ptr)
+float computeFitDistance(const OrbitCamera& cam, float radius)
+{
+    float r = std::max(radius, 1e-3f);
+
+    const float fill = 0.7f;
+    const float padding = 0.05f;
+
+    float aspect = std::max(cam.getAspect(), 1e-3f);
+
+    float fovY = glm::radians(cam.getFovYDegrees());
+    float halfY = 0.5f * fovY;
+    float halfX = std::atan(std::tan(halfY) * aspect);
+
+    float dY = r / std::tan(halfY);
+    float dX = r / std::tan(halfX);
+
+    float d = std::max(dX, dY);
+
+    d = d * fill;
+    d += r * padding;
+
+    return d;
+}
+
+void OrbitCameraController::update(const InputContext &input, float /*dt*/, void *ptr)
 {
     const glm::vec2 md = input.GetMouseDelta();
     if (input.IsKeyDown(GLFW_KEY_ESCAPE))
     {
-        const auto win = static_cast<Window*>(ptr);
+        const auto win = static_cast<Window *>(ptr);
         glfwSetWindowShouldClose(win->window, true);
     }
 
@@ -81,10 +87,10 @@ void OrbitCameraController::update(const InputContext& input, float /*dt*/, void
         m_cam.zoom(scroll * zoomSensitivity);
     }
 
-    if (input.IsMouseButtonPressed(GLFW_MOUSE_BUTTON_MIDDLE))
+    if (input.IsMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT))
     {
-        const auto win = static_cast<Window*>(ptr);
-        const Scene* scene = win ? win->scene : nullptr;
+        const auto win = static_cast<Window *>(ptr);
+        const Scene *scene = win ? win->scene : nullptr;
         const AABB bounds = computeSceneBounds(scene);
 
         if (bounds.valid)

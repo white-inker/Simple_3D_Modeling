@@ -16,6 +16,7 @@ class TestApplication final : public Application
 public:
     explicit TestApplication(const std::string name) : Application(name){}
     void initSceneEntity() override;
+    void initWindowCamera(const WindowConfig &config, Window &window) override;
 };
 
 inline void TestApplication::initSceneEntity()
@@ -39,6 +40,14 @@ inline void TestApplication::initSceneEntity()
     scene->getLighting().directional()->enableShadow = true;
 
     //exportSceneToOBJ(*scene, (getExecutableDir() / "models\\test2.obj").string());
+}
+
+inline void TestApplication::initWindowCamera(const WindowConfig &config, Window &window)
+{
+    // 默认 FPS 相机
+    initWindowOrbitCamera(config, window);
+    // 你可以在下面设置相机参数
+    //dynamic_cast<FpsCameraController*>(window.cameraController.get())->enableCollision = true;
 }
 
 
