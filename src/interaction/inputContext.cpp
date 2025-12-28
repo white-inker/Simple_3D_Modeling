@@ -11,13 +11,15 @@ InputContext::InputContext()
     std::memset(m_keysPressed, 0, sizeof(m_keysPressed));
     std::memset(m_keysReleased, 0, sizeof(m_keysReleased));
     std::memset(m_mouseButtons, 0, sizeof(m_mouseButtons));
+    std::memset(m_mouseButtonsPressed, 0, sizeof(m_mouseButtonsPressed));
+    std::memset(m_mouseButtonsReleased, 0, sizeof(m_mouseButtonsReleased));
 }
 
 // ================= GLFW 事件 =================
 
 void InputContext::OnKey(int key, int action)
 {
-    if (key < 0) return;
+    if (key < 0 || key > GLFW_KEY_LAST) return;
 
     if (action == GLFW_PRESS)
     {
@@ -33,12 +35,18 @@ void InputContext::OnKey(int key, int action)
 
 void InputContext::OnMouseButton(int button, int action)
 {
-    if (button < 0) return;
+    if (button < 0 || button > GLFW_MOUSE_BUTTON_LAST) return;
 
     if (action == GLFW_PRESS)
+    {
         m_mouseButtons[button] = true;
+        m_mouseButtonsPressed[button] = true;
+    }
     else if (action == GLFW_RELEASE)
+    {
         m_mouseButtons[button] = false;
+        m_mouseButtonsReleased[button] = true;
+    }
 }
 
 void InputContext::OnMouseMove(float x, float y)
@@ -57,6 +65,8 @@ void InputContext::Update()
 {
     std::memset(m_keysPressed, 0, sizeof(m_keysPressed));
     std::memset(m_keysReleased, 0, sizeof(m_keysReleased));
+    std::memset(m_mouseButtonsPressed, 0, sizeof(m_mouseButtonsPressed));
+    std::memset(m_mouseButtonsReleased, 0, sizeof(m_mouseButtonsReleased));
 
     m_mouseDelta = m_mousePos - m_lastMousePos;
     m_lastMousePos = m_mousePos;
@@ -84,6 +94,16 @@ bool InputContext::IsKeyReleased(int key) const
 bool InputContext::IsMouseButtonDown(int button) const
 {
     return m_mouseButtons[button];
+}
+
+bool InputContext::IsMouseButtonPressed(int button) const
+{
+    return m_mouseButtonsPressed[button];
+}
+
+bool InputContext::IsMouseButtonReleased(int button) const
+{
+    return m_mouseButtonsReleased[button];
 }
 
 glm::vec2 InputContext::GetMousePosition() const
