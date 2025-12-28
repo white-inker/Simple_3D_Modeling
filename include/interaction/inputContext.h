@@ -27,6 +27,8 @@ public:
     bool IsKeyReleased(int key) const;
 
     bool IsMouseButtonDown(int button) const;
+    bool IsMouseButtonPressed(int button) const;
+    bool IsMouseButtonReleased(int button) const;
 
     glm::vec2 GetMousePosition() const;
     glm::vec2 GetMouseDelta() const;
@@ -38,6 +40,8 @@ private:
     bool m_keysReleased[GLFW_KEY_LAST + 1]{};
 
     bool m_mouseButtons[GLFW_MOUSE_BUTTON_LAST + 1]{};
+    bool m_mouseButtonsPressed[GLFW_MOUSE_BUTTON_LAST + 1]{};
+    bool m_mouseButtonsReleased[GLFW_MOUSE_BUTTON_LAST + 1]{};
 
     glm::vec2 m_mousePos{0.0f};
     glm::vec2 m_lastMousePos{0.0f};
